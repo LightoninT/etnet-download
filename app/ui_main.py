@@ -55,6 +55,7 @@ class MainWindow(QMainWindow):
         self._pending_scheduled = None    # queued scheduled run while busy
         self._start_date = ""             # interval-mode anchor date
         self._contract_loader = None
+        self.live_refresh_timer = None    # 2s live-chart refresher (created in _build_live_tab)
 
         self._build_ui()
         self._load_settings_into_ui()
@@ -81,12 +82,32 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("就緒")
 
     def _build_live_tab(self, tabs: QTabWidget):
-        """即時圖表: renders the GitHub Pages webpage (HSI/HHI 15-min
-        candlesticks). Data is fetched by the webpage itself via the
+        """即時圖表: renders the GitHub Pages webpage (HSI/HHI range-block +
+        mid-line charts). Data is fetched by the webpage itself via the
         Cloudflare Worker proxy - the exe does not fetch etnet directly."""
         self.live_view = QWebEngineView()
         self.live_view.load(QUrl("https://lightonint.github.io/etnet-download/"))
         tabs.insertTab(0, self.live_view, "即時圖表")
+
+        # refresh the live chart every 2 seconds while this tab is active
+        self.live_refresh_timer = QTimer(self)
+        self.live_refresh_timer.setInterval(2000)
+        self.live_refresh_timer.timeout.connect(self._refresh_live_view)
+        tabs.currentChanged.connect(self._on_tab_changed)
+
+    def _on_tab_changed(self, index: int):
+        if self.live_refresh_timer is not None:
+            if index == 0:  # live tab active
+                self.live_refresh_timer.start()
+                self._refresh_live_view()
+            else:
+                self.live_refresh_timer.stop()
+
+    def _refresh_live_view(self):
+        if self.live_view.page() is not None:
+            self.live_view.page().runJavaScript(
+                "typeof refresh === 'function' && refresh();"
+            )
 
     # -- tab 1: manual download -----------------------------------------
     def _build_download_tab(self) -> QWidget:
