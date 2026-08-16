@@ -58,7 +58,7 @@ band.forEach((b, i) => {
 console.log("RANGE BAND TEST OK:", JSON.stringify(band.map((b) => [b.high, b.low])));
 
 // mid line = running range midpoint of the same band
-const { candleMidLine } = global.ETNetParser;
+const { candleMidLine, rangeMarkers } = global.ETNetParser;
 const mids = candleMidLine(C);
 const midExpected = [90, 90, 95, 90, 90, 90]; // (100+80)/2, keep, (110+80)/2, (110+70)/2, (120+60)/2, keep
 mids.forEach((m, i) => {
@@ -66,3 +66,13 @@ mids.forEach((m, i) => {
     throw new Error(`mid ${i + 1} failed: got ${m.value}, want ${midExpected[i]}`);
 });
 console.log("MID LINE TEST OK:", JSON.stringify(mids.map((m) => m.value)));
+
+// markers: big dots at new range highs (above) and new range lows (below)
+const markers = rangeMarkers(C);
+const markerSummary = markers.map((m) => `${m.time}:${m.position}`);
+const wantSummary = ["1:aboveBar", "1:belowBar", "3:aboveBar", "4:belowBar", "5:aboveBar", "5:belowBar"];
+if (JSON.stringify(markerSummary) !== JSON.stringify(wantSummary))
+  throw new Error(`markers mismatch: ${markerSummary} want ${wantSummary}`);
+if (markers.some((m) => m.shape !== "circle" || m.size < 4))
+  throw new Error("markers must be big circles");
+console.log("MARKERS TEST OK:", JSON.stringify(markerSummary));

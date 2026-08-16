@@ -84,26 +84,13 @@ function makeChart(el) {
     timeScale: { borderColor: "#dde1e9", timeVisible: true, secondsVisible: false },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
   });
-  // thick range block: filled area between the running range high and low
-  // (open/close candle bodies are not drawn)
-  const band = chart.addAreaSeries({
-    lineColor: "#1f6feb",
-    topColor: "rgba(31, 111, 235, 0.22)",
-    bottomColor: "rgba(31, 111, 235, 0.04)",
-    lineWidth: 2,
-    priceLineVisible: false,
-    lastValueVisible: false,
-    crosshairMarkerVisible: false,
+  // candles (15-min 陰陽燭)
+  const s = chart.addCandlestickSeries({
+    upColor: "#e53e3e", downColor: "#2f9e44",
+    borderUpColor: "#e53e3e", borderDownColor: "#2f9e44",
+    wickUpColor: "#e53e3e", wickDownColor: "#2f9e44",
   });
-  const bottom = chart.addLineSeries({
-    color: "#1f6feb",
-    lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.Solid,
-    priceLineVisible: false,
-    lastValueVisible: false,
-    crosshairMarkerVisible: false,
-  });
-  // mid line = running range midpoint (thin dashed, on top of the block)
+  // mid line = running range midpoint (thin dashed orange)
   const mid = chart.addLineSeries({
     color: "#e67e22",
     lineWidth: 1,
@@ -112,14 +99,13 @@ function makeChart(el) {
     lastValueVisible: true,
     crosshairMarkerVisible: true,
   });
-  return { chart, band, bottom, mid };
+  return { chart, s, mid };
 }
 
 function render(code, data) {
   const chart = charts[code];
-  const band = ETNetParser.rangeBand(data.candles);
-  chart.band.setData(band.map((b) => ({ time: b.time, value: b.high })));
-  chart.bottom.setData(band.map((b) => ({ time: b.time, value: b.low })));
+  chart.s.setData(data.candles);
+  chart.s.setMarkers(ETNetParser.rangeMarkers(data.candles));
   chart.mid.setData(ETNetParser.candleMidLine(data.candles));
   chart.chart.timeScale().fitContent();
 
