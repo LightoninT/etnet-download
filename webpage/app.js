@@ -16,9 +16,8 @@ const PRODUCTS = [
 ];
 
 // Cloudflare Worker proxy (free). Deploy webpage/worker_proxy.js to a worker,
-// then put its URL here (e.g. "https://etnet-proxy.yourname.workers.dev").
-// It is tried first; the public proxies below are fallbacks.
-const CLOUDFLARE_WORKER_URL = "";
+// then put its URL here. It is tried first; the public proxies below are fallbacks.
+const CLOUDFLARE_WORKER_URL = "https://etnet-proxy.etnetdata.workers.dev";
 
 // public CORS proxies, tried in order when same-origin API is unavailable
 const PROXIES = [
