@@ -12,6 +12,10 @@ venv/
 build/
 dist/
 
+# macOS packaging artifacts
+*.dmg
+app.iconset/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -19,3 +23,4 @@ Thumbs.db
 # Editor
 .idea/
 .vscode/
+dmg_stage/

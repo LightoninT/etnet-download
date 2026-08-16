@@ -68,6 +68,20 @@ python -m pip install -r requirements.txt pyinstaller
 python -m PyInstaller --clean --noconfirm futures_exporter.spec
 ```
 
+## macOS 版本 (.dmg)
+
+在 macOS 上（Apple Silicon / Intel 皆可，產物為當前架構的 .app）：
+```bash
+python3 -m pip install -r requirements.txt pyinstaller pillow
+python3 gen_icns.py && iconutil -c icns app.iconset -o app.icns   # 產生圖示（一次即可）
+python3 -m PyInstaller --clean --noconfirm futures_exporter_mac.spec   # 產生 .app
+rm -rf dmg_stage && mkdir dmg_stage
+cp -R dist/ETNetFuturesExporter.app dmg_stage/
+ln -s /Applications dmg_stage/Applications
+hdiutil create -volname "ETNetFuturesExporter" -srcfolder dmg_stage -ov -format UDZO ETNetFuturesExporter-mac-arm64.dmg
+```
+> 未簽署的 .app 首次開啟時，請在 Finder 右鍵 →「開啟」以略過 Gatekeeper 警告。
+
 ## 專案結構
 
 ```
