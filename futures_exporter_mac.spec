@@ -20,7 +20,6 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('webpage', 'webpage'),
         (_QTWEBENGINE_PROCESS, 'QtWebEngineProcess.app'),
     ],
     hiddenimports=[

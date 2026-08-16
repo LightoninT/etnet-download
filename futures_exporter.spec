@@ -6,7 +6,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('webpage', 'webpage')],
+    datas=[],
     hiddenimports=[
         'bs4',
         'lxml',

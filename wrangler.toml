@@ -1,0 +1,6 @@
+# Cloudflare Worker config - ETNet CORS proxy (free plan)
+# Deploy:  npx wrangler deploy   (needs CLOUDFLARE_API_TOKEN)
+name = "etnet-proxy"
+main = "webpage/worker_proxy.js"
+compatibility_date = "2024-09-23"
+workers_dev = true

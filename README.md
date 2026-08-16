@@ -7,7 +7,7 @@
 ### Tab 0: 即時圖表 (Live Charts)
 - 顯示 **恒生指數期貨 (HSI)** 及 **恒生中國企業指數期貨 (HHI)**（即月）的 **15分鐘陰陽燭圖**，附「中線（日市區間中點 = (最高+最低)/2）」虛線。
 - **每 60 秒**自動從 etnet 更新一次數據。
-- 同一網頁亦公開於 GitHub Pages：https://lightonint.github.io/etnet-download/
+- **exe/dmg 的做法**：此分頁直接載入 GitHub Pages 網頁（https://lightonint.github.io/etnet-download/），**exe 本身不會抓取 etnet 數據** —— 所有抓取都在網頁內進行（透過 Cloudflare Worker 代理），把負載完全交回網頁端。
 
 #### Cloudflare Worker 代理（免費，可選但建議）
 GitHub Pages 是靜態網站，瀏覽器直接抓 etnet 會被 CORS 擋住。預設會自動嘗試公開代理（cors.lol → allorigins → codetabs），免費額度有限、較不穩定。建議部署你自己的免費 Cloudflare Worker 代理：

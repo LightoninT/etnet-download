@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
 
 from . import config as app_config
 from .downloader import fetch_html, product_month_map
-from .live_server import DataCache, page_dir, start_server
 from .scheduler import WEEKDAY_NAMES, ScheduleConfig, hkt_display, next_run
 from .worker import DEFAULT_PRODUCTS, DownloadWorker, desktop_dir
 
@@ -82,20 +81,11 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("就緒")
 
     def _build_live_tab(self, tabs: QTabWidget):
-        """即時圖表: embeds the live webpage (HSI/HHI 15-min candlesticks)."""
+        """即時圖表: renders the GitHub Pages webpage (HSI/HHI 15-min
+        candlesticks). Data is fetched by the webpage itself via the
+        Cloudflare Worker proxy - the exe does not fetch etnet directly."""
         self.live_view = QWebEngineView()
-        self.live_port = 0
-        try:
-            self.live_cache = DataCache(self)
-            self.live_port = start_server(self.live_cache, page_dir())
-        except Exception as exc:  # noqa: BLE001
-            self.live_port = 0
-            print(f"[live] server init failed: {exc}")
-        if self.live_port:
-            self.live_view.load(QUrl(f"http://127.0.0.1:{self.live_port}/"))
-        else:
-            # fallback: public GitHub Pages copy of the same page
-            self.live_view.load(QUrl("https://lightonint.github.io/etnet-download/"))
+        self.live_view.load(QUrl("https://lightonint.github.io/etnet-download/"))
         tabs.insertTab(0, self.live_view, "即時圖表")
 
     # -- tab 1: manual download -----------------------------------------
