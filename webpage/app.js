@@ -139,18 +139,26 @@ function render(code, data) {
 }
 
 // ---------------------------------------------------------------------------
-// Main loop (1-minute timer)
+// Main loop (1-minute timer; the exe drives a 2-second refresh via JS)
 // ---------------------------------------------------------------------------
+let refreshing = false;
+
 async function refresh() {
+  if (refreshing) return; // guard: skip if a fetch is still in flight
+  refreshing = true;
   let ok = 0;
-  for (const p of PRODUCTS) {
-    try {
-      const res = await fetchJsonOrHtml(p.code);
-      render(p.code, res.page);
-      ok++;
-    } catch (e) {
-      document.getElementById(`meta-${p.code}`).textContent = `❌ ${e.message}`;
+  try {
+    for (const p of PRODUCTS) {
+      try {
+        const res = await fetchJsonOrHtml(p.code);
+        render(p.code, res.page);
+        ok++;
+      } catch (e) {
+        document.getElementById(`meta-${p.code}`).textContent = `❌ ${e.message}`;
+      }
     }
+  } finally {
+    refreshing = false;
   }
   statusEl.textContent =
     ok === PRODUCTS.length
