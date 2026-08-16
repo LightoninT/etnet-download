@@ -9,12 +9,8 @@
 - **每 60 秒**自動從 etnet 更新一次數據。
 - **exe/dmg 的做法**：此分頁直接載入 GitHub Pages 網頁（https://lightonint.github.io/etnet-download/），**exe 本身不會抓取 etnet 數據** —— 所有抓取都在網頁內進行（透過 Cloudflare Worker 代理），把負載完全交回網頁端。
 
-#### Cloudflare Worker 代理（免費，可選但建議）
-GitHub Pages 是靜態網站，瀏覽器直接抓 etnet 會被 CORS 擋住。預設會自動嘗試公開代理（cors.lol → allorigins → codetabs），免費額度有限、較不穩定。建議部署你自己的免費 Cloudflare Worker 代理：
-1. Cloudflare 儀表板 → **Workers & Pages → Create → Worker**
-2. 把 `webpage/worker_proxy.js` 的內容貼上取代預設程式碼 → **Deploy**
-3. 複製你的 Worker 網址（`https://<名稱>.<帳號>.workers.dev`）
-4. 告訴我網址，我會把它寫入 `webpage/app.js` 的 `CLOUDFLARE_WORKER_URL`（或你自行改完後 push）
+#### Cloudflare Worker 代理（免費，已部署）
+GitHub Pages 是靜態網站，瀏覽器直接抓 etnet 會被 CORS 擋住。已部署你自己的 Cloudflare Worker 代理：**https://etnet-proxy.etnetdata.workers.dev**（程式碼在 `webpage/worker_proxy.js` + `wrangler.toml`，用 `./deploy_worker.sh` 或 `npx wrangler deploy` 更新）。網頁會優先使用它抓取 etnet，失敗時自動退回公開代理（cors.lol → allorigins → codetabs）。
 - 免費方案每天 10 萬次請求，足夠每分鐘更新。
 
 ### Tab 1: 下載數據 (Get Data)
