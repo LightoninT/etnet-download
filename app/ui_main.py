@@ -187,10 +187,10 @@ class MainWindow(QMainWindow):
         times_row.addWidget(self.times_list, 1)
 
         t_edit_col = QVBoxLayout()
-        # dropdown of common HK times (15-min steps, covers HK futures sessions)
+        # dropdown of common HK times (5-min steps, covers HK futures sessions)
         self.hkt_combo = QComboBox()
         for h in range(24):
-            for m in (0, 15, 30, 45):
+            for m in range(0, 60, 5):
                 self.hkt_combo.addItem(f"{h:02d}:{m:02d}")
         self.hkt_combo.setCurrentText("16:30")
         t_edit_col.addWidget(self.hkt_combo)
