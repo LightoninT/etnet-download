@@ -11,8 +11,8 @@ from openpyxl.utils import get_column_letter
 
 from .downloader import FuturesPage
 
-HEADER_FILL = PatternFill("solid", fgColor="1F4E78")
-HEADER_FONT = Font(color="FFFFFF", bold=True, size=11)
+HEADER_FILL = PatternFill("solid", fgColor="FFD9E1F2")  # light blue, black text
+HEADER_FONT = Font(color="FF000000", bold=True, size=11)
 TITLE_FONT = Font(bold=True, size=14, color="1F4E78")
 THIN = Side(style="thin", color="BFBFBF")
 BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
