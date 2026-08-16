@@ -84,26 +84,13 @@ function makeChart(el) {
     timeScale: { borderColor: "#dde1e9", timeVisible: true, secondsVisible: false },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
   });
-  // thick range block: filled area between the running range high and low
-  // (open/close candle bodies are not drawn)
-  const band = chart.addAreaSeries({
-    lineColor: "#1f6feb",
-    topColor: "rgba(31, 111, 235, 0.22)",
-    bottomColor: "rgba(31, 111, 235, 0.04)",
-    lineWidth: 2,
-    priceLineVisible: false,
-    lastValueVisible: false,
-    crosshairMarkerVisible: false,
+  // candles (15-min 陰陽燭)
+  const s = chart.addCandlestickSeries({
+    upColor: "#e53e3e", downColor: "#2f9e44",
+    borderUpColor: "#e53e3e", borderDownColor: "#2f9e44",
+    wickUpColor: "#e53e3e", wickDownColor: "#2f9e44",
   });
-  const bottom = chart.addLineSeries({
-    color: "#1f6feb",
-    lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.Solid,
-    priceLineVisible: false,
-    lastValueVisible: false,
-    crosshairMarkerVisible: false,
-  });
-  // mid line = running range midpoint (thin dashed, on top of the block)
+  // mid line = running range midpoint (thin dashed orange)
   const mid = chart.addLineSeries({
     color: "#e67e22",
     lineWidth: 1,
@@ -112,14 +99,13 @@ function makeChart(el) {
     lastValueVisible: true,
     crosshairMarkerVisible: true,
   });
-  return { chart, band, bottom, mid };
+  return { chart, s, mid };
 }
 
 function render(code, data) {
   const chart = charts[code];
-  const band = ETNetParser.rangeBand(data.candles);
-  chart.band.setData(band.map((b) => ({ time: b.time, value: b.high })));
-  chart.bottom.setData(band.map((b) => ({ time: b.time, value: b.low })));
+  chart.s.setData(data.candles);
+  chart.s.setMarkers(ETNetParser.rangeMarkers(data.candles));
   chart.mid.setData(ETNetParser.candleMidLine(data.candles));
   chart.chart.timeScale().fitContent();
 
@@ -139,18 +125,26 @@ function render(code, data) {
 }
 
 // ---------------------------------------------------------------------------
-// Main loop (1-minute timer)
+// Main loop (1-minute timer; the exe drives a 2-second refresh via JS)
 // ---------------------------------------------------------------------------
+let refreshing = false;
+
 async function refresh() {
+  if (refreshing) return; // guard: skip if a fetch is still in flight
+  refreshing = true;
   let ok = 0;
-  for (const p of PRODUCTS) {
-    try {
-      const res = await fetchJsonOrHtml(p.code);
-      render(p.code, res.page);
-      ok++;
-    } catch (e) {
-      document.getElementById(`meta-${p.code}`).textContent = `❌ ${e.message}`;
+  try {
+    for (const p of PRODUCTS) {
+      try {
+        const res = await fetchJsonOrHtml(p.code);
+        render(p.code, res.page);
+        ok++;
+      } catch (e) {
+        document.getElementById(`meta-${p.code}`).textContent = `❌ ${e.message}`;
+      }
     }
+  } finally {
+    refreshing = false;
   }
   statusEl.textContent =
     ok === PRODUCTS.length
