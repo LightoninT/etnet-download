@@ -17,7 +17,7 @@ const PRODUCTS = [
 
 // Cloudflare Worker proxy (free). Deploy webpage/worker_proxy.js to a worker,
 // then put its URL here. It is tried first; the public proxies below are fallbacks.
-const CLOUDFLARE_WORKER_URL = "https://etnet-proxy.etnetdata.workers.dev";
+const CLOUDFLARE_WORKER_URL = "https://etnet-proxy.etnetdata.workers.dev/";
 
 // public CORS proxies, tried in order when same-origin API is unavailable
 const PROXIES = [
@@ -30,9 +30,7 @@ const PROXIES = [
 ];
 
 const statusEl = document.getElementById("status");
-const charts = {};   // code -> chart instance
-const series = {};   // code -> candlestick series
-const midLines = {}; // code -> price line
+const charts = {};   // code -> { chart, s (candles), mid (mid line) }
 
 // ---------------------------------------------------------------------------
 // HKT display helper
@@ -75,7 +73,8 @@ async function fetchJsonOrHtml(code) {
 // ---------------------------------------------------------------------------
 function makeChart(el) {
   const chart = LightweightCharts.createChart(el, {
-    height: 380,
+    autoSize: true, // follows container width/height (mobile responsive)
+    height: 420,
     layout: { background: { color: "#ffffff" }, textColor: "#1c2330" },
     grid: {
       vertLines: { color: "#eef1f6" },
@@ -90,29 +89,25 @@ function makeChart(el) {
     borderUpColor: "#e53e3e", borderDownColor: "#2f9e44",
     wickUpColor: "#e53e3e", wickDownColor: "#2f9e44",
   });
-  return { chart, s };
-}
-
-function setMidLine(s, price) {
-  if (midLines[s] !== undefined) s.removePriceLine(midLines[s]);
-  if (price != null && Number.isFinite(price)) {
-    midLines[s] = s.createPriceLine({
-      price,
-      color: "#1f6feb",
-      lineWidth: 1,
-      lineStyle: LightweightCharts.LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: "中線(日中點)",
-    });
-  }
+  // mid line = middle value of each candle: (high + low) / 2
+  const mid = chart.addLineSeries({
+    color: "#1f6feb",
+    lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    priceLineVisible: false,
+    lastValueVisible: false,
+    crosshairMarkerVisible: false,
+  });
+  return { chart, s, mid };
 }
 
 function render(code, data) {
   const chart = charts[code];
   chart.s.setData(data.candles);
+  chart.mid.setData(
+    data.candles.map((c) => ({ time: c.time, value: (c.high + c.low) / 2 }))
+  );
   chart.chart.timeScale().fitContent();
-  // mid line = session mid-point, fallback to previous close
-  setMidLine(chart.s, data.midPoint != null ? data.midPoint : data.prevClose);
 
   const meta = document.getElementById(`meta-${code}`);
   const last = data.candles.length ? data.candles[data.candles.length - 1].close : null;

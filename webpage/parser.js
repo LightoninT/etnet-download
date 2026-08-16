@@ -44,11 +44,7 @@
     if (!month) throw new Error(`無法讀取 ${code} 合約月份`);
 
     let prevClose = null;
-    let dayHigh = null;
-    let dayLow = null;
-    // session cards: 日市 / 夜市 quote stats
     for (const card of doc.querySelectorAll(".futures-home-session-card")) {
-      const label = cleanText(card.querySelector(".label")?.textContent);
       const stats = {};
       for (const li of card.querySelectorAll("li.futures-home-quote-stat")) {
         const lab = cleanText(li.querySelector(".futures-home-quote-label")?.textContent);
@@ -56,14 +52,7 @@
         if (lab) stats[lab] = val;
       }
       if (stats["前收市:"] != null && prevClose == null) prevClose = stats["前收市:"];
-      if (label.includes("日市")) {
-        dayHigh = stats["最高:"] ?? null;
-        dayLow = stats["最低:"] ?? null;
-      }
     }
-    // session mid-point = (day session high + low) / 2
-    const midPoint =
-      dayHigh != null && dayLow != null ? (dayHigh + dayLow) / 2 : null;
 
     const candles = [];
     const tbody = doc.querySelector(".et-swiper-table table tbody");
@@ -89,7 +78,7 @@
     const updated = m ? m[1] : null;
 
     if (!candles.length) throw new Error(`${code}: 沒有 15 分鐘數據`);
-    return { code, month, prevClose, midPoint, candles, updated };
+    return { code, month, prevClose, candles, updated };
   }
 
   global.ETNetParser = { parsePage, toUnixSeconds, hktToday, cleanText, toNum };
