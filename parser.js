@@ -28,14 +28,15 @@
     return Number.isFinite(n) ? n : null;
   }
 
-  /* Mid line = running range midpoint. The (high, low) range only expands:
-   *   1. candle inside current range        -> keep previous midpoint
-   *   2. candle high > range high           -> (new high + previous low) / 2
-   *   3. candle low  < range low            -> (previous high + new low) / 2
-   *   4. candle breaks both                 -> (new high + new low) / 2
-   * Returns [{time, value}] aligned to the candles.
+  /* Range band = running (high, low) range per candle. The range only expands:
+   *   - candle inside current range      -> keep previous high/low
+   *   - candle high > range high         -> range high = new high
+   *   - candle low  < range low          -> range low  = new low
+   *   - candle breaks both               -> both update
+   * Returns [{time, high, low}] aligned to the candles. Rendered as a thick
+   * block between high and low (open/close values are not shown).
    */
-  function candleMidLine(candles) {
+  function rangeBand(candles) {
     const out = [];
     let rangeHigh = null;
     let rangeLow = null;
@@ -44,11 +45,10 @@
         rangeHigh = c.high; // first candle seeds the range
         rangeLow = c.low;
       } else {
-        if (c.high > rangeHigh) rangeHigh = c.high; // rules 2 & 4
-        if (c.low < rangeLow) rangeLow = c.low;     // rules 3 & 4
-        // rule 1: candle inside range -> range unchanged
+        if (c.high > rangeHigh) rangeHigh = c.high;
+        if (c.low < rangeLow) rangeLow = c.low;
       }
-      out.push({ time: c.time, value: (rangeHigh + rangeLow) / 2 });
+      out.push({ time: c.time, high: rangeHigh, low: rangeLow });
     }
     return out;
   }
@@ -105,5 +105,5 @@
     return { code, month, prevClose, candles, updated };
   }
 
-  global.ETNetParser = { parsePage, candleMidLine, toUnixSeconds, hktToday, cleanText, toNum };
+  global.ETNetParser = { parsePage, rangeBand, toUnixSeconds, hktToday, cleanText, toNum };
 })(typeof window !== "undefined" ? window : globalThis);
