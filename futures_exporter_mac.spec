@@ -2,33 +2,17 @@
 # PyInstaller spec for macOS: builds ETNetFuturesExporter.app (windowed).
 # Usage:  pyinstaller --clean --noconfirm futures_exporter_mac.spec
 
-import os
-
-import PySide6  # noqa: F401  (build env has PySide6)
-
-# QtWebEngineProcess helper app - PyInstaller's hook does not copy it into the
-# bundle; ship it under Contents/Resources and point QTWEBENGINEPROCESS_PATH
-# at it from main.py.
-_qt_lib = os.path.join(os.path.dirname(PySide6.__file__), "Qt", "lib")
-_QTWEBENGINE_PROCESS = os.path.join(
-    _qt_lib,
-    "QtWebEngineCore.framework", "Helpers", "QtWebEngineProcess.app",
-)
-
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        (_QTWEBENGINE_PROCESS, 'QtWebEngineProcess.app'),
-    ],
+    datas=[],
     hiddenimports=[
         'bs4',
         'lxml',
         'openpyxl',
         'openpyxl.cell._writer',
         'requests',
-        'PySide6.QtWebEngineWidgets',
     ],
     hookspath=[],
     hooksconfig={},

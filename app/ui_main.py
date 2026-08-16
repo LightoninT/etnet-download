@@ -8,8 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QThread, QTime, QTimer, QUrl, Signal
-from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtCore import QThread, QTime, QTimer, Signal
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QGroupBox, QHBoxLayout,
     QLabel, QListWidget, QMainWindow, QMessageBox, QPlainTextEdit,
@@ -19,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from . import config as app_config
 from .downloader import fetch_html, product_month_map
+from .live_chart import LiveChartsPanel
 from .scheduler import WEEKDAY_NAMES, ScheduleConfig, hkt_display, next_run
 from .worker import DEFAULT_PRODUCTS, DownloadWorker, desktop_dir
 
@@ -55,7 +55,6 @@ class MainWindow(QMainWindow):
         self._pending_scheduled = None    # queued scheduled run while busy
         self._start_date = ""             # interval-mode anchor date
         self._contract_loader = None
-        self.live_refresh_timer = None    # 2s live-chart refresher (created in _build_live_tab)
 
         self._build_ui()
         self._load_settings_into_ui()
@@ -82,32 +81,19 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("就緒")
 
     def _build_live_tab(self, tabs: QTabWidget):
-        """即時圖表: renders the GitHub Pages webpage (HSI/HHI range-block +
-        mid-line charts). Data is fetched by the webpage itself via the
-        Cloudflare Worker proxy - the exe does not fetch etnet directly."""
-        self.live_view = QWebEngineView()
-        self.live_view.load(QUrl("https://lightonint.github.io/etnet-download/"))
-        tabs.insertTab(0, self.live_view, "即時圖表")
-
-        # refresh the live chart every 2 seconds while this tab is active
-        self.live_refresh_timer = QTimer(self)
-        self.live_refresh_timer.setInterval(2000)
-        self.live_refresh_timer.timeout.connect(self._refresh_live_view)
+        """即時圖表: native-drawn HSI/HHI candle charts (no browser engine).
+        Data is fetched via the Cloudflare Worker proxy every 2 s while this
+        tab is active."""
+        self.live_panel = LiveChartsPanel()
+        tabs.insertTab(0, self.live_panel, "即時圖表")
         tabs.currentChanged.connect(self._on_tab_changed)
 
     def _on_tab_changed(self, index: int):
-        if self.live_refresh_timer is not None:
+        if hasattr(self, "live_panel"):
             if index == 0:  # live tab active
-                self.live_refresh_timer.start()
-                self._refresh_live_view()
+                self.live_panel.start()
             else:
-                self.live_refresh_timer.stop()
-
-    def _refresh_live_view(self):
-        if self.live_view.page() is not None:
-            self.live_view.page().runJavaScript(
-                "typeof refresh === 'function' && refresh();"
-            )
+                self.live_panel.stop()
 
     # -- tab 1: manual download -----------------------------------------
     def _build_download_tab(self) -> QWidget:
@@ -553,6 +539,8 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self._tick.stop()
         self._persist()
+        if hasattr(self, "live_panel"):
+            self.live_panel.stop()
         if self._contract_loader is not None and self._contract_loader.isRunning():
             self._contract_loader.wait(3000)
         for w in list(self._workers):

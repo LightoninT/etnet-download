@@ -13,7 +13,6 @@ a = Analysis(
         'openpyxl',
         'openpyxl.cell._writer',
         'requests',
-        'PySide6.QtWebEngineWidgets',
     ],
     hookspath=[],
     hooksconfig={},
