@@ -61,8 +61,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleName': 'ETNet Futures Exporter',
         'CFBundleDisplayName': 'ETNet Futures Exporter',
-        'CFBundleShortVersionString': '1.1.5',
-        'CFBundleVersion': '1.1.5',
+        'CFBundleShortVersionString': '1.1.6',
+        'CFBundleVersion': '1.1.6',
         'NSHumanReadableCopyright': 'Copyright (c) 2026 LightoninT',
         'LSMinimumSystemVersion': '11.0',
     },

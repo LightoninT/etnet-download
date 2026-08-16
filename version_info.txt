@@ -1,8 +1,8 @@
 # UTF-8
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 1, 5, 0),
-    prodvers=(1, 1, 5, 0),
+    filevers=(1, 1, 6, 0),
+    prodvers=(1, 1, 6, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -17,12 +17,12 @@ VSVersionInfo(
         [
           StringStruct('CompanyName', 'LightoninT'),
           StringStruct('FileDescription', 'ETNet Futures Exporter - HK index futures data downloader & live charts'),
-          StringStruct('FileVersion', '1.1.5.0'),
+          StringStruct('FileVersion., .1.1.6.0.),
           StringStruct('InternalName', 'ETNetFuturesExporter'),
           StringStruct('LegalCopyright', 'Copyright (c) 2026 LightoninT'),
           StringStruct('OriginalFilename', 'ETNetFuturesExporter.exe'),
           StringStruct('ProductName', 'ETNet Futures Exporter'),
-          StringStruct('ProductVersion', '1.1.5')
+          StringStruct('ProductVersion., .1.1.6.)
         ]
       )
     ]),

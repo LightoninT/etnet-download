@@ -1,10 +1,9 @@
 #!/bin/bash
-# Publish a GitHub release with the Windows exe + onedir zip + macOS dmg.
 # Requires: gh authenticated with write access to LightoninT/etnet-download.
 set -e
 cd "$(dirname "$0")"
 
-VERSION="v1.1.5"
+VERSION="v1.1.6"
 
 echo "[1/3] Pushing code ..."
 git -c credential.helper='!gh auth git-credential' push -u origin main
@@ -16,7 +15,6 @@ git -c credential.helper='!gh auth git-credential' push -f origin "$VERSION"
 echo "[3/3] Creating GitHub release ..."
 gh release create "$VERSION" \
   dist/ETNetFuturesExporter.exe \
-  dist/ETNetFuturesExporter-windows-onedir.zip \
   ETNetFuturesExporter-mac-arm64.dmg \
   --title "ETNet Futures Exporter $VERSION" \
   --notes "## ETNet Futures Exporter $VERSION
@@ -27,7 +25,6 @@ gh release create "$VERSION" \
 - Windows exe 已內嵌版本資訊；SmartScreen 提示請見 README（簽章指南: docs/SIGNING.md）
 - 檔案:
   - ETNetFuturesExporter.exe (單檔, ~51MB)
-  - ETNetFuturesExporter-windows-onedir.zip (資料夾版, 防毒誤報較少)
   - ETNetFuturesExporter-mac-arm64.dmg (macOS Apple Silicon)"
 
 echo "Release published: https://github.com/LightoninT/etnet-download/releases/tag/$VERSION"

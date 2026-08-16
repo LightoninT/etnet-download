@@ -61,7 +61,10 @@ def page_to_chart(page: downloader.FuturesPage) -> dict:
          "open": r.open, "high": r.high, "low": r.low, "close": r.last}
         for r in page.interval if r.time not in ("上日", "今日")
     ]
-    prev_close = next((s.prev_close for s in page.sessions if s.prev_close), None)
+    prev_close = next(
+        (s.prev_close for s in page.sessions if s.session == "日市" and s.prev_close),
+        None,
+    )
     return {
         "code": page.subtype,
         "month": page.month,
