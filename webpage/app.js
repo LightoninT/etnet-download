@@ -84,27 +84,33 @@ function makeChart(el) {
     timeScale: { borderColor: "#dde1e9", timeVisible: true, secondsVisible: false },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
   });
-  const s = chart.addCandlestickSeries({
-    upColor: "#e53e3e", downColor: "#2f9e44",
-    borderUpColor: "#e53e3e", borderDownColor: "#2f9e44",
-    wickUpColor: "#e53e3e", wickDownColor: "#2f9e44",
-  });
-  // mid line = middle value of each candle: (high + low) / 2
-  const mid = chart.addLineSeries({
-    color: "#1f6feb",
-    lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.Dashed,
+  // thick range block: filled area between the running range high and low
+  // (open/close candle bodies are not drawn)
+  const band = chart.addAreaSeries({
+    lineColor: "#1f6feb",
+    topColor: "rgba(31, 111, 235, 0.22)",
+    bottomColor: "rgba(31, 111, 235, 0.04)",
+    lineWidth: 2,
     priceLineVisible: false,
     lastValueVisible: false,
     crosshairMarkerVisible: false,
   });
-  return { chart, s, mid };
+  const bottom = chart.addLineSeries({
+    color: "#1f6feb",
+    lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Solid,
+    priceLineVisible: false,
+    lastValueVisible: false,
+    crosshairMarkerVisible: false,
+  });
+  return { chart, band, bottom };
 }
 
 function render(code, data) {
   const chart = charts[code];
-  chart.s.setData(data.candles);
-  chart.mid.setData(ETNetParser.candleMidLine(data.candles));
+  const band = ETNetParser.rangeBand(data.candles);
+  chart.band.setData(band.map((b) => ({ time: b.time, value: b.high })));
+  chart.bottom.setData(band.map((b) => ({ time: b.time, value: b.low })));
   chart.chart.timeScale().fitContent();
 
   const meta = document.getElementById(`meta-${code}`);

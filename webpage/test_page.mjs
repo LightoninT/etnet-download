@@ -29,21 +29,21 @@ const FIXTURE = `<!doctype html><html><body>
 </tbody></table></div>
 </body></html>`;
 
-const setDataCalls = [];
-const midLineCalls = [];
+const bandHighCalls = [];
+const bandLowCalls = [];
+let candleSeriesCreated = false;
 dom.window.LightweightCharts = {
   createChart: () => ({
     timeScale: () => ({ fitContent: () => {} }),
-    addCandlestickSeries: () => ({
-      setData: (d) => setDataCalls.push(d),
-      createPriceLine: () => ({}),
-      removePriceLine: () => {},
+    addCandlestickSeries: () => { candleSeriesCreated = true; return { setData() {} }; },
+    addAreaSeries: () => ({
+      setData: (d) => bandHighCalls.push(d),
     }),
     addLineSeries: () => ({
-      setData: (d) => midLineCalls.push(d),
+      setData: (d) => bandLowCalls.push(d),
     }),
   }),
-  LineStyle: { Dashed: 0 },
+  LineStyle: { Dashed: 0, Solid: 0 },
   CrosshairMode: { Normal: 0 },
 };
 
@@ -67,16 +67,15 @@ await new Promise((r) => setTimeout(r, 100));
 
 let ok = true;
 try {
-  if (setDataCalls.length !== 2) throw new Error(`expected 2 chart series updates, got ${setDataCalls.length}`);
-  const c0 = setDataCalls[0][0];
-  if (!Number.isInteger(c0.time) || c0.time < 1e9) throw new Error(`bad candle time: ${c0.time}`);
-  if (c0.open !== 25191 || c0.high !== 25237 || c0.low !== 25160 || c0.close !== 25186)
-    throw new Error(`bad first candle: ${JSON.stringify(c0)}`);
-  // mid line = middle value of each candle (high+low)/2
-  if (midLineCalls.length !== 2) throw new Error(`expected 2 mid-line updates, got ${midLineCalls.length}`);
-  const m0 = midLineCalls[0][0];
-  if (m0.time !== c0.time || m0.value !== (25237 + 25160) / 2)
-    throw new Error(`bad candle mid: ${JSON.stringify(m0)}`);
+  if (candleSeriesCreated) throw new Error("candlestick series should NOT be created (open/close removed)");
+  if (bandHighCalls.length !== 2 || bandLowCalls.length !== 2)
+    throw new Error(`expected 2 band updates, got high=${bandHighCalls.length} low=${bandLowCalls.length}`);
+  const h0 = bandHighCalls[0][0];
+  const l0 = bandLowCalls[0][0];
+  if (!Number.isInteger(h0.time) || h0.time < 1e9) throw new Error(`bad time: ${h0.time}`);
+  // fixture candle: high 25237, low 25160 -> band high/low match
+  if (h0.value !== 25237 || l0.value !== 25160)
+    throw new Error(`bad band: high=${h0.value} low=${l0.value}`);
   const status = dom.window.document.getElementById("status").textContent;
   const metaHSI = dom.window.document.getElementById("meta-HSI").textContent;
   console.log("status:", status);
