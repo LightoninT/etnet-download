@@ -210,3 +210,75 @@ def default_filename(page: FuturesPage, prefix: str = "etnet_futures") -> str:
     code = page.subtype or "ALL"
     month = page.month or ""
     return f"{prefix}_{code}_{month}_{stamp}.xlsx"
+
+
+# ---------------------------------------------------------------------------
+# Predefined per-product tabs (current + next month)
+# ---------------------------------------------------------------------------
+
+QUOTE_HEADERS = [
+    "時段", "最新", "升跌", "升跌%", "高/低水",
+    "最高", "最低", "前收市", "開市", "成交張數", "交易宗數", "每宗成交",
+]
+INTERVAL_HEADERS = [
+    "時間", "開市價", "最高價", "最低價", "最新",
+    "今日升跌", "升跌%", "高/低水", "成交", "交易宗數", "每宗成交",
+]
+
+
+def _section_title(ws, row: int, text: str) -> int:
+    cell = ws.cell(row=row, column=1, value=text)
+    cell.font = Font(bold=True, size=12, color="1F4E78")
+    return row + 1
+
+
+def build_tabs_workbook(pages_by_code: dict, product_names: dict = None,
+                        title: str = "指數期貨報價") -> Workbook:
+    """One sheet per product, each with 即月 + 下月 sections:
+    quotes (日市/夜市), 未平倉, 15分鐘時段記錄."""
+    wb = Workbook()
+    wb.remove(wb.active)  # drop the default sheet
+    now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    for code, pages in pages_by_code.items():
+        name = (product_names or {}).get(code, code)
+        sheet_title = str(name)[:31]
+        ws = wb.create_sheet(title=sheet_title)
+
+        ws["A1"] = f"{name} ({code})"
+        ws["A1"].font = TITLE_FONT
+        ws["A2"] = f"資料來源: https://www.etnet.com.hk/www/tc/futures/    下載時間: {now}"
+        row = 4
+
+        for page in pages:
+            month_label = f"{page.month[:4]}/{page.month[4:]}" if len(page.month) == 6 else page.month
+            row = _section_title(ws, row, f"{name} — {month_label}")
+            # --- quotes ---
+            _write_rows(ws, row, QUOTE_HEADERS, [
+                [s.session, s.last, s.change, s.change_pct, s.premium,
+                 s.high, s.low, s.prev_close, s.open,
+                 s.volume, s.trades, s.avg_trade]
+                for s in page.sessions
+            ])
+            row = row + 1 + max(len(page.sessions), 1)
+
+            # --- open interest ---
+            if page.open_interest is not None:
+                oi = page.open_interest
+                row = _section_title(ws, row, "未平倉")
+                row = _write_rows(ws, row, ["合約", "到期日", "未平倉總數 (GOI)", "未平倉淨數 (NOI)"],
+                                  [[oi.contract or name, oi.expiry, oi.goi, oi.noi]]) + 2
+
+            # --- interval table ---
+            if page.interval:
+                row = _section_title(ws, row, "15分鐘時段記錄")
+                row = _write_rows(ws, row, INTERVAL_HEADERS, [
+                    [r.time, r.open, r.high, r.low, r.last,
+                     r.change, r.change_pct, r.premium,
+                     r.volume, r.trades, r.avg_trade]
+                    for r in page.interval
+                ]) + 2
+
+        _autofit(ws, max(len(QUOTE_HEADERS), len(INTERVAL_HEADERS)))
+
+    return wb

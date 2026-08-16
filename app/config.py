@@ -33,10 +33,19 @@ def load_config() -> ScheduleConfig:
         cfg.times = [str(t) for t in data.get("times", ["16:30"])]
         cfg.interval_days = int(data.get("interval_days", 1))
         cfg.start_date = str(data.get("start_date", ""))
-        cfg.contract = str(data.get("contract", ""))
-        cfg.all_contracts = bool(data.get("all_contracts", False))
         cfg.output_dir = str(data.get("output_dir", ""))
         cfg.use_hkt = bool(data.get("use_hkt", True))
+        # new schema: products list
+        products = data.get("products")
+        if isinstance(products, list) and products:
+            cfg.products = [str(p) for p in products]
+        else:  # legacy schema: single contract / all_contracts
+            contract = str(data.get("contract", ""))
+            all_c = bool(data.get("all_contracts", False))
+            if all_c or not contract:
+                cfg.products = ["HSI", "HHI"]
+            else:
+                cfg.products = [contract.split("|")[0]]
     except Exception:
         pass
     return cfg
@@ -51,8 +60,7 @@ def save_config(cfg: ScheduleConfig) -> None:
         "times": cfg.times,
         "interval_days": cfg.interval_days,
         "start_date": cfg.start_date,
-        "contract": cfg.contract,
-        "all_contracts": cfg.all_contracts,
+        "products": cfg.products,
         "output_dir": cfg.output_dir,
         "use_hkt": cfg.use_hkt,
     }

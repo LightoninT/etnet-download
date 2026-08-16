@@ -367,3 +367,21 @@ def front_month_options(html: str) -> List[tuple]:
         if code not in front or month < front[code][0]:
             front[code] = (month, label)
     return [(code, m, lab) for code, (m, lab) in sorted(front.items())]
+
+
+def product_month_map(html: str) -> dict:
+    """Map product code -> (display name, [months...]).
+
+    Months are sorted; the first two are the current & next contract months.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    out: dict = {}
+    for code, month, label in parse_contract_options(soup):
+        if code not in out:
+            name = re.sub(r"\(\d{2}/\d{4}\)", "", label).strip()
+            out[code] = [name or code, []]
+        if month not in out[code][1]:
+            out[code][1].append(month)
+    for code, (name, months) in out.items():
+        out[code] = (name, sorted(months))
+    return out

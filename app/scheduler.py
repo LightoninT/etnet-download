@@ -55,8 +55,7 @@ class ScheduleConfig:
     times: List[str] = field(default_factory=lambda: ["16:30"])          # "HH:MM" (HKT)
     interval_days: int = 1                     # every N days (interval mode)
     start_date: str = ""                       # ISO yyyy-mm-dd anchor for interval mode
-    contract: str = ""                         # "" = front month / default page
-    all_contracts: bool = False                # fetch all front-month contracts
+    products: List[str] = field(default_factory=lambda: ["HSI", "HHI"])  # ticked products
     output_dir: str = ""                       # "" = Desktop
     use_hkt: bool = True                       # times are in Hong Kong Time
 
@@ -76,6 +75,8 @@ class ScheduleConfig:
             return "每週模式需要至少選擇一天"
         if self.mode == "interval" and self.interval_days < 1:
             return "每隔日數必須 >= 1"
+        if not self.products:
+            return "請至少勾選一個期貨產品"
         return ""
 
     # ------------------------------------------------------------------

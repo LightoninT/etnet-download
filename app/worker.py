@@ -13,6 +13,8 @@ from PySide6.QtCore import QThread, Signal
 from . import downloader, excel_writer
 from .envconfig import SETTINGS
 
+DEFAULT_PRODUCTS = ["HSI", "HHI"]
+
 
 def desktop_dir() -> Path:
     """Resolve the user's Desktop directory."""
@@ -30,7 +32,7 @@ def desktop_dir() -> Path:
 
 
 class DownloadWorker(QThread):
-    """Fetch one contract (or all front-month contracts) and save .xlsx.
+    """Fetch the ticked products (current + next contract month) and save .xlsx.
 
     Signals:
         progress(str)  - human readable progress message
@@ -42,11 +44,9 @@ class DownloadWorker(QThread):
     succeeded = Signal(str)
     failed = Signal(str)
 
-    def __init__(self, contract: str = "", all_contracts: bool = False,
-                 output_dir: str = "", parent=None):
+    def __init__(self, products: list = None, output_dir: str = "", parent=None):
         super().__init__(parent)
-        self.contract = contract          # "CODE|YYYYMM" or ""
-        self.all_contracts = all_contracts
+        self.products = list(products) if products else list(DEFAULT_PRODUCTS)
         self.output_dir = output_dir
 
     # ------------------------------------------------------------------
@@ -58,36 +58,37 @@ class DownloadWorker(QThread):
             out_dir.mkdir(parents=True, exist_ok=True)
             prefix = SETTINGS["DOWNLOAD_PREFIX"] or "etnet_futures"
 
-            if self.all_contracts:
-                self.progress.emit("正在讀取合約清單 ...")
-                html = downloader.fetch_html()
-                opts = downloader.front_month_options(html)
-                if not opts:
-                    raise RuntimeError("無法從網頁取得合約清單")
-                pages = []
-                for code, month, label in opts:
-                    self.progress.emit(f"下載中: {label} ({code})")
+            self.progress.emit("正在讀取產品/月份清單 ...")
+            html = downloader.fetch_html()
+            pmap = downloader.product_month_map(html)
+            if not pmap:
+                raise RuntimeError("無法從網頁取得產品清單")
+
+            pages_by_code: dict = {}
+            for code in self.products:
+                if code not in pmap:
+                    self.progress.emit(f"警告: 找不到產品 {code}")
+                    continue
+                name, months = pmap[code]
+                for month in months[:2]:  # current + next month only
+                    self.progress.emit(f"下載中: {name} ({month})")
                     try:
                         p = downloader.get_futures_page(code, month)
                     except Exception as exc:  # keep going on per-contract errors
-                        self.progress.emit(f"警告: {label} 下載失敗 - {exc}")
+                        self.progress.emit(f"警告: {name} ({month}) 下載失敗 - {exc}")
                         continue
-                    pages.append(p)
-                if not pages:
-                    raise RuntimeError("所有合約均下載失敗")
-                wb = excel_writer.build_multi_workbook(pages)
-                filename = (
-                    f"{prefix}_ALL_{dt.datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
-                )
-            else:
-                subtype = month = ""
-                if self.contract and "|" in self.contract:
-                    subtype, month = self.contract.split("|", 1)
-                label = subtype or "即月"
-                self.progress.emit(f"下載中: {label} ...")
-                page = downloader.get_futures_page(subtype, month)
-                wb = excel_writer.build_workbook(page)
-                filename = excel_writer.default_filename(page, prefix=prefix)
+                    pages_by_code.setdefault(code, []).append(p)
+
+            if not pages_by_code:
+                raise RuntimeError("所有勾選的產品均下載失敗")
+
+            wb = excel_writer.build_tabs_workbook(
+                pages_by_code, {k: v[0] for k, v in pmap.items()}
+            )
+            codes = "_".join(sorted(pages_by_code))
+            filename = (
+                f"{prefix}_{codes}_{dt.datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+            )
 
             path = out_dir / filename
             self.progress.emit(f"寫入檔案: {path.name} ...")

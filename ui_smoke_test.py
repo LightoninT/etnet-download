@@ -30,6 +30,24 @@ def main():
     assert isinstance(cfg, ScheduleConfig), "config collection broken"
     assert cfg.validate() == "", f"default config invalid: {cfg.validate()}"
     print("default config summary:", cfg.summary())
+    print("default products:", cfg.products)
+    assert "HSI" in cfg.products and "HHI" in cfg.products  # HSI/HHI ticked by default
+
+    # product tick boxes
+    assert win.product_checks["HSI"].isChecked()
+    assert win.product_checks["HHI"].isChecked()
+    win.product_checks["HSI"].setChecked(False)
+    cfg = win._collect_config()
+    assert "HSI" not in cfg.products and "HHI" in cfg.products
+    win.product_checks["HSI"].setChecked(True)
+    win.product_checks["HHI"].setChecked(False)
+    win.product_checks["HSI"].setChecked(False)  # none ticked
+    cfg = win._collect_config()
+    assert cfg.validate() != ""  # at least one product required
+    win.product_checks["HSI"].setChecked(True)
+    win.product_checks["HHI"].setChecked(True)
+    cfg = win._collect_config()
+    assert cfg.validate() == ""
 
     # weekly mode
     win.radio_weekly.setChecked(True)

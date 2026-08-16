@@ -10,43 +10,33 @@ from pathlib import Path
 
 from PySide6.QtCore import QThread, QTime, QTimer, Signal
 from PySide6.QtWidgets import (
-    QApplication, QCheckBox, QComboBox, QFileDialog, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QListWidget, QMainWindow, QMessageBox, QPlainTextEdit,
+    QCheckBox, QComboBox, QGroupBox, QHBoxLayout,
+    QLabel, QListWidget, QMainWindow, QMessageBox, QPlainTextEdit,
     QPushButton, QRadioButton, QSpinBox, QTabWidget, QTimeEdit, QVBoxLayout,
     QWidget,
 )
 
 from . import config as app_config
-from .downloader import fetch_html, parse_contract_options
+from .downloader import fetch_html, product_month_map
 from .scheduler import WEEKDAY_NAMES, ScheduleConfig, hkt_display, next_run
-from .worker import DownloadWorker, desktop_dir
+from .worker import DEFAULT_PRODUCTS, DownloadWorker, desktop_dir
 
-ALL_CONTRACTS = "__ALL__"
+# products checked by default (恆生指數期貨 + 恆生中國企業指數期貨)
+DEFAULT_TICKED = ["HSI", "HHI"]
 
 
 class _ContractLoader(QThread):
-    """Fetch the contract list from etnet in the background."""
+    """Fetch the product list (code -> name/months) from etnet in background."""
 
-    loaded = Signal(list)      # [(userData, label), ...]
+    loaded = Signal(dict)      # {code: (name, [months...])}
     failed = Signal(str)
 
     def run(self):
         try:
-            html = fetch_html()
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(html, "html.parser")
-            opts = parse_contract_options(soup)
-            items = []
-            seen = set()
-            for code, month, label in opts:
-                key = (code, month)
-                if key in seen:
-                    continue
-                seen.add(key)
-                items.append((f"{code}|{month}", f"{label} ({code})"))
-            if not items:
-                raise RuntimeError("合約清單為空")
-            self.loaded.emit(items)
+            pmap = product_month_map(fetch_html())
+            if not pmap:
+                raise RuntimeError("產品清單為空")
+            self.loaded.emit(pmap)
         except Exception as exc:  # noqa: BLE001
             self.failed.emit(str(exc))
 
@@ -92,21 +82,34 @@ class MainWindow(QMainWindow):
 
         info = QLabel(
             "資料來源: https://www.etnet.com.hk/www/tc/futures/\n"
-            "按下「Get Data」會下載期貨報價數據並儲存為 .xlsx 至桌面。"
+            "勾選要下載的期貨產品（每個產品一個 Excel 分頁，包含報價、未平倉、"
+            "15分鐘時段記錄）。月份自動下載「即月 + 下一個月」。"
         )
         info.setWordWrap(True)
         lay.addWidget(info)
 
-        row = QHBoxLayout()
-        row.addWidget(QLabel("合約:"))
-        self.contract_combo = QComboBox()
-        self.contract_combo.setMinimumWidth(340)
-        row.addWidget(self.contract_combo, 1)
+        prod_grp = QGroupBox("選擇期貨產品（tick box，可多選）")
+        pg = QVBoxLayout(prod_grp)
+        self.product_checks: dict = {}
+        first = True
+        for code in DEFAULT_PRODUCTS:
+            cb = QCheckBox(code)
+            cb.setChecked(True)
+            cb.toggled.connect(self._on_config_changed)
+            self.product_checks[code] = cb
+            pg.addWidget(cb)
+            first = False
+        self.product_extra_label = QLabel("正在讀取其他產品 ...")
+        pg.addWidget(self.product_extra_label)
+        lay.addWidget(prod_grp)
+
+        btn_row = QHBoxLayout()
         self.get_btn = QPushButton("Get Data")
         self.get_btn.setMinimumHeight(34)
         self.get_btn.clicked.connect(self._on_get_data)
-        row.addWidget(self.get_btn)
-        lay.addLayout(row)
+        btn_row.addWidget(self.get_btn)
+        btn_row.addStretch(1)
+        lay.addLayout(btn_row)
 
         self.out_dir_label = QLabel()
         lay.addWidget(self.out_dir_label)
@@ -210,13 +213,13 @@ class MainWindow(QMainWindow):
         times_row.addLayout(t_edit_col)
         g.addLayout(times_row)
 
-        # contract for scheduled runs
+        # products note (selection lives on the download tab)
         c_row = QHBoxLayout()
-        c_row.addWidget(QLabel("下載合約:"))
-        self.sched_contract_combo = QComboBox()
-        self.sched_contract_combo.setMinimumWidth(300)
-        c_row.addWidget(self.sched_contract_combo, 1)
-        c_row.addStretch(1)
+        self.sched_products_label = QLabel(
+            "下載產品: 以「下載數據」頁的 tick box 勾選為準（自動下載即月 + 下一個月）"
+        )
+        self.sched_products_label.setWordWrap(True)
+        c_row.addWidget(self.sched_products_label, 1)
         g.addLayout(c_row)
 
         self.summary_label = QLabel()
@@ -269,12 +272,8 @@ class MainWindow(QMainWindow):
         self.times_list.clear()
         for t in sorted(set(cfg.times)):
             self.times_list.addItem(t)
-        if cfg.all_contracts:
-            self.sched_contract_combo.setCurrentIndex(0)
-        elif cfg.contract:
-            idx = self.sched_contract_combo.findData(cfg.contract)
-            if idx >= 0:
-                self.sched_contract_combo.setCurrentIndex(idx)
+        for code, cb in self.product_checks.items():
+            cb.setChecked(code in cfg.products)
         self._schedule_active = cfg.enabled
         self._sync_start_stop_button()
         self._on_mode_changed()
@@ -297,9 +296,9 @@ class MainWindow(QMainWindow):
             self.times_list.item(k).text()
             for k in range(self.times_list.count())
         ]
-        data = self.sched_contract_combo.currentData()
-        cfg.all_contracts = (data == ALL_CONTRACTS) or self.sched_contract_combo.currentIndex() < 0
-        cfg.contract = "" if cfg.all_contracts else str(data or "")
+        cfg.products = [
+            code for code, cb in self.product_checks.items() if cb.isChecked()
+        ]
         cfg.output_dir = ""
         cfg.use_hkt = self.hkt_check.isChecked()
         cfg.enabled = self._schedule_active
@@ -416,12 +415,14 @@ class MainWindow(QMainWindow):
         if self._busy:
             self._log("警告: 上一次下載仍在進行中，本次已略過")
             return
-        combo = self.contract_combo if manual else self.sched_contract_combo
-        data = combo.currentData()
-        all_contracts = (data == ALL_CONTRACTS) or data is None
-        contract = "" if all_contracts else str(data)
+        products = self._collect_config().products
+        if not products:
+            self._log("錯誤: 請先勾選至少一個期貨產品")
+            if manual:
+                QMessageBox.warning(self, "未選擇產品", "請先勾選至少一個期貨產品")
+            return
 
-        worker = DownloadWorker(contract=contract, all_contracts=all_contracts)
+        worker = DownloadWorker(products=products)
         worker.progress.connect(lambda m: self._log(m))
         worker.succeeded.connect(self._on_download_success)
         worker.failed.connect(self._on_download_failed)
@@ -470,21 +471,24 @@ class MainWindow(QMainWindow):
     # contract list
     # ------------------------------------------------------------------
     def _start_contract_loader(self):
-        def fill(items):
-            for combo in (self.contract_combo, self.sched_contract_combo):
-                combo.blockSignals(True)
-                combo.clear()
-                combo.addItem("全部即月合約（所有產品）", ALL_CONTRACTS)
-                for user_data, label in items:
-                    combo.addItem(label, user_data)
-                combo.blockSignals(False)
+        def fill(pmap: dict):
+            for code, (name, months) in sorted(pmap.items()):
+                if code in self.product_checks:
+                    cb = self.product_checks[code]
+                    cb.setText(f"{code} - {name}")
+                    continue
+                cb = QCheckBox(f"{code} - {name}")
+                cb.setChecked(False)
+                cb.toggled.connect(self._on_config_changed)
+                self.product_checks[code] = cb
+                # insert before the extra label
+                lay = self.product_extra_label.parentWidget().layout()
+                lay.insertWidget(lay.count() - 1, cb)
+            self.product_extra_label.setText("月份: 自動下載「即月 + 下一個月」")
             self._apply_saved_contract()
 
         def on_fail(msg):
-            for combo in (self.contract_combo, self.sched_contract_combo):
-                combo.clear()
-                combo.addItem("全部即月合約（所有產品）", ALL_CONTRACTS)
-            self._log(f"無法取得合約清單: {msg}")
+            self.product_extra_label.setText(f"無法取得產品清單: {msg}")
 
         self._contract_loader = _ContractLoader()
         self._contract_loader.loaded.connect(fill)
@@ -493,16 +497,8 @@ class MainWindow(QMainWindow):
 
     def _apply_saved_contract(self):
         cfg = app_config.load_config()
-        combo = self.sched_contract_combo
-        if cfg.all_contracts:
-            combo.setCurrentIndex(0)
-        elif cfg.contract:
-            idx = combo.findData(cfg.contract)
-            if idx >= 0:
-                combo.setCurrentIndex(idx)
-        idx = self.contract_combo.findData(cfg.contract) if cfg.contract else -1
-        if idx >= 0:
-            self.contract_combo.setCurrentIndex(idx)
+        for code, cb in self.product_checks.items():
+            cb.setChecked(code in cfg.products)
 
     # ------------------------------------------------------------------
     def closeEvent(self, event):
