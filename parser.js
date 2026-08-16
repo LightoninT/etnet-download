@@ -60,31 +60,6 @@
     return rangeBand(candles).map((b) => ({ time: b.time, value: (b.high + b.low) / 2 }));
   }
 
-  /* Bigger dots marking the running range's highest / lowest points:
-   * a circle above the bar when a new range high is set, below when a new
-   * range low is set (lightweight-charts series markers).
-   */
-  function rangeMarkers(candles) {
-    const band = rangeBand(candles);
-    const markers = [];
-    band.forEach((b, i) => {
-      const prev = i > 0 ? band[i - 1] : null;
-      if (i === 0 || b.high > prev.high) {
-        markers.push({
-          time: b.time, position: "aboveBar", color: "#e67e22",
-          shape: "circle", size: 4, text: "",
-        });
-      }
-      if (i === 0 || b.low < prev.low) {
-        markers.push({
-          time: b.time, position: "belowBar", color: "#7c3aed",
-          shape: "circle", size: 4, text: "",
-        });
-      }
-    });
-    return markers;
-  }
-
   function parsePage(html, code) {    const doc = new global.DOMParser().parseFromString(html, "text/html");
 
     let month = "";
@@ -137,5 +112,5 @@
     return { code, month, prevClose, candles, updated };
   }
 
-  global.ETNetParser = { parsePage, rangeBand, candleMidLine, rangeMarkers, toUnixSeconds, hktToday, cleanText, toNum };
+  global.ETNetParser = { parsePage, rangeBand, candleMidLine, toUnixSeconds, hktToday, cleanText, toNum };
 })(typeof window !== "undefined" ? window : globalThis);

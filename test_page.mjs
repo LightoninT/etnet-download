@@ -32,14 +32,20 @@ const FIXTURE = `<!doctype html><html><body>
 const candleDataCalls = [];
 const markersCalls = [];
 const midLineCalls = [];
+let customSeriesPlugin = null;
 let areaSeriesCreated = false;
+let standardCandlesCreated = false;
 dom.window.LightweightCharts = {
   createChart: () => ({
     timeScale: () => ({ fitContent: () => {} }),
-    addCandlestickSeries: () => ({
-      setData: (d) => candleDataCalls.push(d),
-      setMarkers: (m) => markersCalls.push(m),
-    }),
+    addCustomSeries: (plugin, opts) => {
+      customSeriesPlugin = plugin;
+      return {
+        setData: (d) => candleDataCalls.push(d),
+        setMarkers: (m) => markersCalls.push(m),
+      };
+    },
+    addCandlestickSeries: () => { standardCandlesCreated = true; return { setData() {} }; },
     addAreaSeries: () => { areaSeriesCreated = true; return { setData() {} }; },
     addLineSeries: () => ({
       setData: (d) => midLineCalls.push(d),
@@ -69,20 +75,17 @@ await new Promise((r) => setTimeout(r, 100));
 
 let ok = true;
 try {
-  if (areaSeriesCreated) throw new Error("area (band) series should NOT be created");
+  if (standardCandlesCreated || areaSeriesCreated)
+    throw new Error("standard candle/area series should NOT be created (custom thick-wick used)");
+  if (!customSeriesPlugin || typeof customSeriesPlugin.renderer.draw !== "function")
+    throw new Error("custom thick-wick candle series not registered");
   if (candleDataCalls.length !== 2) throw new Error(`expected 2 candle updates, got ${candleDataCalls.length}`);
   const c0 = candleDataCalls[0][0];
   if (!Number.isInteger(c0.time) || c0.time < 1e9) throw new Error(`bad time: ${c0.time}`);
   if (c0.open !== 25191 || c0.high !== 25237 || c0.low !== 25160 || c0.close !== 25186)
     throw new Error(`bad first candle: ${JSON.stringify(c0)}`);
-  // bigger dots at the highest / lowest of the range (markers)
-  if (markersCalls.length !== 2) throw new Error(`expected 2 marker sets, got ${markersCalls.length}`);
-  const markers = markersCalls[0];
-  if (markers.length !== 2) throw new Error(`expected 2 markers (high+low), got ${markers.length}`);
-  const above = markers.find((m) => m.position === "aboveBar");
-  const below = markers.find((m) => m.position === "belowBar");
-  if (!above || !below || above.size < 4 || below.size < 4)
-    throw new Error(`big dots missing: ${JSON.stringify(markers)}`);
+  // big dots removed: no markers set
+  if (markersCalls.length !== 0) throw new Error(`markers should be removed, got ${markersCalls.length}`);
   // mid line = running range midpoint (25237+25160)/2
   if (midLineCalls.length !== 2) throw new Error(`expected 2 mid-line updates, got ${midLineCalls.length}`);
   if (midLineCalls[0][0].value !== (25237 + 25160) / 2)

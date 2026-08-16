@@ -69,6 +69,48 @@ async function fetchJsonOrHtml(code) {
 }
 
 // ---------------------------------------------------------------------------
+// Custom candlestick series with THICK wicks (lightweight-charts v4 plugin)
+// ---------------------------------------------------------------------------
+const THICK_CANDLES = {
+  renderer: {
+    draw(target) {
+      target.useMediaCoordinateSpace((scope) => {
+        const ctx = scope.context;
+        const data = target.seriesData() || [];
+        for (const d of data) {
+          const x = target.timeToCoordinate(d.time);
+          if (x === null) continue;
+          const yO = target.priceToCoordinate(d.open);
+          const yH = target.priceToCoordinate(d.high);
+          const yL = target.priceToCoordinate(d.low);
+          const yC = target.priceToCoordinate(d.close);
+          if (yO === null || yH === null || yL === null || yC === null) continue;
+          const up = d.close >= d.open;
+          const color = up ? "#e53e3e" : "#2f9e44";
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          // thick wick (the "thin line" part, now thick)
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(x, yH);
+          ctx.lineTo(x, yL);
+          ctx.stroke();
+          // body (open-close rectangle)
+          const bodyTop = Math.min(yO, yC);
+          const bodyH = Math.max(1, Math.abs(yC - yO));
+          const bodyW = 9;
+          ctx.fillRect(x - bodyW / 2, bodyTop, bodyW, bodyH);
+        }
+      });
+    },
+  },
+  update() {},
+  defaultOptions() {
+    return {};
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Chart rendering
 // ---------------------------------------------------------------------------
 function makeChart(el) {
@@ -84,11 +126,10 @@ function makeChart(el) {
     timeScale: { borderColor: "#dde1e9", timeVisible: true, secondsVisible: false },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
   });
-  // candles (15-min 陰陽燭)
-  const s = chart.addCandlestickSeries({
-    upColor: "#e53e3e", downColor: "#2f9e44",
-    borderUpColor: "#e53e3e", borderDownColor: "#2f9e44",
-    wickUpColor: "#e53e3e", wickDownColor: "#2f9e44",
+  // candles (15-min 陰陽燭) with thick wicks
+  const s = chart.addCustomSeries(THICK_CANDLES, {
+    priceLineVisible: false,
+    lastValueVisible: false,
   });
   // mid line = running range midpoint (thin dashed orange)
   const mid = chart.addLineSeries({
@@ -105,7 +146,6 @@ function makeChart(el) {
 function render(code, data) {
   const chart = charts[code];
   chart.s.setData(data.candles);
-  chart.s.setMarkers(ETNetParser.rangeMarkers(data.candles));
   chart.mid.setData(ETNetParser.candleMidLine(data.candles));
   chart.chart.timeScale().fitContent();
 
