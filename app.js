@@ -103,7 +103,16 @@ function makeChart(el) {
     lastValueVisible: false,
     crosshairMarkerVisible: false,
   });
-  return { chart, band, bottom };
+  // mid line = running range midpoint (thin dashed, on top of the block)
+  const mid = chart.addLineSeries({
+    color: "#e67e22",
+    lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    priceLineVisible: false,
+    lastValueVisible: true,
+    crosshairMarkerVisible: true,
+  });
+  return { chart, band, bottom, mid };
 }
 
 function render(code, data) {
@@ -111,6 +120,7 @@ function render(code, data) {
   const band = ETNetParser.rangeBand(data.candles);
   chart.band.setData(band.map((b) => ({ time: b.time, value: b.high })));
   chart.bottom.setData(band.map((b) => ({ time: b.time, value: b.low })));
+  chart.mid.setData(ETNetParser.candleMidLine(data.candles));
   chart.chart.timeScale().fitContent();
 
   const meta = document.getElementById(`meta-${code}`);

@@ -56,3 +56,13 @@ band.forEach((b, i) => {
     throw new Error(`band rule ${i + 1} failed: got (${b.high},${b.low}), want (${expected[i].high},${expected[i].low})`);
 });
 console.log("RANGE BAND TEST OK:", JSON.stringify(band.map((b) => [b.high, b.low])));
+
+// mid line = running range midpoint of the same band
+const { candleMidLine } = global.ETNetParser;
+const mids = candleMidLine(C);
+const midExpected = [90, 90, 95, 90, 90, 90]; // (100+80)/2, keep, (110+80)/2, (110+70)/2, (120+60)/2, keep
+mids.forEach((m, i) => {
+  if (m.value !== midExpected[i])
+    throw new Error(`mid ${i + 1} failed: got ${m.value}, want ${midExpected[i]}`);
+});
+console.log("MID LINE TEST OK:", JSON.stringify(mids.map((m) => m.value)));

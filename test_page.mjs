@@ -31,7 +31,9 @@ const FIXTURE = `<!doctype html><html><body>
 
 const bandHighCalls = [];
 const bandLowCalls = [];
+const midLineCalls = [];
 let candleSeriesCreated = false;
+let lineSeriesCount = 0;
 dom.window.LightweightCharts = {
   createChart: () => ({
     timeScale: () => ({ fitContent: () => {} }),
@@ -39,9 +41,11 @@ dom.window.LightweightCharts = {
     addAreaSeries: () => ({
       setData: (d) => bandHighCalls.push(d),
     }),
-    addLineSeries: () => ({
-      setData: (d) => bandLowCalls.push(d),
-    }),
+    addLineSeries: () => {
+      lineSeriesCount++;
+      const isMid = lineSeriesCount % 2 === 0; // odd = band low, even = mid line
+      return { setData: (d) => (isMid ? midLineCalls : bandLowCalls).push(d) };
+    },
   }),
   LineStyle: { Dashed: 0, Solid: 0 },
   CrosshairMode: { Normal: 0 },
@@ -76,6 +80,10 @@ try {
   // fixture candle: high 25237, low 25160 -> band high/low match
   if (h0.value !== 25237 || l0.value !== 25160)
     throw new Error(`bad band: high=${h0.value} low=${l0.value}`);
+  // mid line = running range midpoint (25237+25160)/2
+  if (midLineCalls.length !== 2) throw new Error(`expected 2 mid-line updates, got ${midLineCalls.length}`);
+  if (midLineCalls[0][0].value !== (25237 + 25160) / 2)
+    throw new Error(`bad mid line: ${JSON.stringify(midLineCalls[0][0])}`);
   const status = dom.window.document.getElementById("status").textContent;
   const metaHSI = dom.window.document.getElementById("meta-HSI").textContent;
   console.log("status:", status);

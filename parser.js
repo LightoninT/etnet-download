@@ -53,6 +53,13 @@
     return out;
   }
 
+  /* Mid line = running range midpoint: (range high + range low) / 2 per
+   * candle, using the same expanding-range rules as rangeBand.
+   */
+  function candleMidLine(candles) {
+    return rangeBand(candles).map((b) => ({ time: b.time, value: (b.high + b.low) / 2 }));
+  }
+
   function parsePage(html, code) {    const doc = new global.DOMParser().parseFromString(html, "text/html");
 
     let month = "";
@@ -105,5 +112,5 @@
     return { code, month, prevClose, candles, updated };
   }
 
-  global.ETNetParser = { parsePage, rangeBand, toUnixSeconds, hktToday, cleanText, toNum };
+  global.ETNetParser = { parsePage, rangeBand, candleMidLine, toUnixSeconds, hktToday, cleanText, toNum };
 })(typeof window !== "undefined" ? window : globalThis);
