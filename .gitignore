@@ -1,0 +1,21 @@
+# Environment / secrets — never commit
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.pytest_cache/
+
+# PyInstaller build output
+build/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/

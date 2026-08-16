@@ -1,0 +1,98 @@
+# ETNet Futures Exporter (期貨數據匯出工具)
+
+一個 Windows 桌面程式（.exe），從 [etnet.com.hk 指數期貨頁面](https://www.etnet.com.hk/www/tc/futures/) 下載香港指數期貨報價數據，並儲存為 **.xlsx** 檔案到桌面。
+
+## 功能
+
+### Tab 1: 下載數據 (Get Data)
+- 按下 **Get Data** 即時下載期貨數據並儲存 .xlsx 到桌面。
+- 可選擇下載 **單一合約**（例如恒生指數期貨、恒生科技指數期貨、MSCI 指數期貨等，即月或指定月份）或 **全部即月合約**。
+- 每個 .xlsx 檔案包含：
+  - **報價摘要**：日市 / 夜市最新價、升跌、升跌%、高/低水、最高、最低、前收市、開市、成交張數、交易宗數、每宗成交
+  - **未平倉**：未平倉總數 (GOI)、未平倉淨數 (NOI)、到期日
+  - **現貨**：恒生指數現貨報價
+  - **15分鐘時段記錄**：即日每 15 分鐘的開/高/低/最新、升跌、高/低水、成交等
+- 檔案命名：`etnet_futures_<合約代碼>_<月份>_<日期時間>.xlsx`
+
+### Tab 2: 排程下載 (Scheduled Task)
+支援多種排程方式，可自由組合：
+- **每週**：勾選執行日子（星期一至日），可多選
+- **每日**：每天執行
+- **每隔 N 日**：每 N 天執行一次
+- **執行時間**：每日可加入**多個**指定時間（例：09:00、16:30）→ 即「每日執行次數」
+- 介面會即時顯示「每週執行 X 次（每日 Y 次）」摘要
+- 顯示下次執行時間；程式需要保持開啟（排程引擎於程式內運行）
+- 排程設定會自動儲存，重開程式後仍保留
+- **立即執行一次**：可手動觸發一次下載
+
+## 使用方式
+
+直接雙擊 `ETNetFuturesExporter.exe` 即可。程式介面為繁體中文。
+
+> 已預先建好的 exe 位於 `dist\ETNetFuturesExporter.exe`（Windows 10/11 64-bit）。
+> 如想自行重新打包，請參閱下方「建立 Windows .exe」。
+
+> 注意：排程功能需要在程式開啟時才會觸發。如需電腦關機/程式關閉時仍執行，
+> 可在 Windows 工作排程器 (Task Scheduler) 中加入啟動時自動執行程式。
+
+## 環境設定 (.env)
+
+程式啟動時會自動讀取 `.env` 設定檔（存放位置：exe 同一資料夾，或專案根目錄；
+真實環境變數優先）。複製 `.env.example` 為 `.env` 後修改即可：
+
+| 變數 | 用途 | 預設 |
+|---|---|---|
+| `ETNET_FUTURES_URL` | 期貨數據來源網址 | `https://www.etnet.com.hk/www/tc/futures/` |
+| `REQUEST_TIMEOUT` | 下載逾時（秒） | `30` |
+| `USER_AGENT` | 請求的瀏覽器標識 | Chrome UA |
+| `OUTPUT_DIR` | 輸出資料夾（留空 = 桌面） | 桌面 |
+| `DOWNLOAD_PREFIX` | .xlsx 檔名前綴 | `etnet_futures` |
+
+`.env` 不會被提交到 GitHub（見 `.gitignore`）。
+
+## 建立 Windows .exe
+
+### 方法一：Windows 上一鍵打包（最簡單）
+在你的 Windows 電腦上：
+1. 安裝 [Python 3.9+](https://www.python.org/downloads/)（安裝時勾選 *Add python.exe to PATH*）
+2. 雙擊執行專案內的 **`build.bat`**
+3. 完成後 exe 位於 `dist\ETNetFuturesExporter.exe`
+
+### 方法二：GitHub Actions（免本機環境）
+把本專案推到 GitHub 後：
+1. 到 GitHub 專案頁 → **Actions** → **Build Windows EXE** → **Run workflow**
+2. 完成後在 workflow 的 **Artifacts** 下載 `ETNetFuturesExporter-windows`
+
+### 方法三：手動指令
+```bat
+python -m pip install -r requirements.txt pyinstaller
+python -m PyInstaller --clean --noconfirm futures_exporter.spec
+```
+
+## 專案結構
+
+```
+futures_exporter/
+├── main.py                  # 程式入口
+├── app/
+│   ├── downloader.py        # 下載及解析 etnet 期貨頁面
+│   ├── excel_writer.py      # 產生 .xlsx (openpyxl)
+│   ├── scheduler.py         # 排程引擎（每週/每日/每隔N日、多時間）
+│   ├── worker.py            # 背景下載執行緒 (QThread)
+│   ├── config.py            # 排程設定檔存取（JSON）
+│   ├── envconfig.py         # .env 設定載入（stdlib，無額外依賴）
+│   └── ui_main.py           # 主視窗（兩個 Tab）
+├── tests/                   # 單元測試（排程 + .env）
+├── smoke_test.py            # 線上數據下載測試
+├── futures_exporter.spec    # PyInstaller 設定
+├── build.bat                # Windows 一鍵打包
+├── .env.example             # 環境設定範例
+└── .github/workflows/       # GitHub Actions 自動打包
+```
+
+## 設定檔位置
+- Windows: `%APPDATA%\FuturesExporter\config.json`
+- 其他系統: `~/.futures_exporter/config.json`
+
+## 免責聲明
+數據來自 etnet.com.hk，僅供參考，不構成任何投資建議。

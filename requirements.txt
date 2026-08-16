@@ -1,0 +1,7 @@
+requests>=2.31
+beautifulsoup4>=4.12
+openpyxl>=3.1
+lxml>=4.9
+# Note: PySide6 >= 6.9 Windows wheels (e.g. 6.11.x) ship without icuuc.dll,
+# which makes Qt6Core fail to load; stay on the known-good 6.8.x line.
+PySide6>=6.6,<6.9
