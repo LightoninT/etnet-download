@@ -8,7 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QThread, QTime, QTimer, Signal
+from PySide6.QtCore import QThread, QTime, QTimer, QUrl, Signal
+from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QGroupBox, QHBoxLayout,
     QLabel, QListWidget, QMainWindow, QMessageBox, QPlainTextEdit,
@@ -18,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from . import config as app_config
 from .downloader import fetch_html, product_month_map
+from .live_server import DataCache, page_dir, start_server
 from .scheduler import WEEKDAY_NAMES, ScheduleConfig, hkt_display, next_run
 from .worker import DEFAULT_PRODUCTS, DownloadWorker, desktop_dir
 
@@ -72,10 +74,29 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
     def _build_ui(self):
         tabs = QTabWidget()
+        # live charts tab FIRST (before 下載數據)
+        self._build_live_tab(tabs)
         tabs.addTab(self._build_download_tab(), "下載數據")
         tabs.addTab(self._build_schedule_tab(), "排程下載")
         self.setCentralWidget(tabs)
         self.statusBar().showMessage("就緒")
+
+    def _build_live_tab(self, tabs: QTabWidget):
+        """即時圖表: embeds the live webpage (HSI/HHI 15-min candlesticks)."""
+        self.live_view = QWebEngineView()
+        self.live_port = 0
+        try:
+            self.live_cache = DataCache(self)
+            self.live_port = start_server(self.live_cache, page_dir())
+        except Exception as exc:  # noqa: BLE001
+            self.live_port = 0
+            print(f"[live] server init failed: {exc}")
+        if self.live_port:
+            self.live_view.load(QUrl(f"http://127.0.0.1:{self.live_port}/"))
+        else:
+            # fallback: public GitHub Pages copy of the same page
+            self.live_view.load(QUrl("https://lightonint.github.io/etnet-download/"))
+        tabs.insertTab(0, self.live_view, "即時圖表")
 
     # -- tab 1: manual download -----------------------------------------
     def _build_download_tab(self) -> QWidget:

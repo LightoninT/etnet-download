@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ETNet 期貨 15分鐘陰陽燭圖</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>ETNet 期貨 15分鐘陰陽燭圖（即月）</h1>
+  <div id="status" class="status">載入中...</div>
+</header>
+<main>
+  <section class="chart-card">
+    <div class="chart-head">
+      <h2>恒生指數期貨 (HSI)</h2>
+      <div id="meta-HSI" class="meta">—</div>
+    </div>
+    <div id="chart-HSI" class="chart"></div>
+  </section>
+  <section class="chart-card">
+    <div class="chart-head">
+      <h2>恒生中國企業指數期貨 (HHI)</h2>
+      <div id="meta-HHI" class="meta">—</div>
+    </div>
+    <div id="chart-HHI" class="chart"></div>
+  </section>
+</main>
+<footer>
+  資料來源: etnet.com.hk（每 60 秒更新一次）｜ 15分鐘陰陽燭 + 中線（前收市）｜ 僅供參考
+</footer>
+<script src="lib/lightweight-charts.standalone.production.js"></script>
+<script src="parser.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

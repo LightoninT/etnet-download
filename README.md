@@ -4,6 +4,11 @@
 
 ## 功能
 
+### Tab 0: 即時圖表 (Live Charts)
+- 顯示 **恒生指數期貨 (HSI)** 及 **恒生中國企業指數期貨 (HHI)**（即月）的 **15分鐘陰陽燭圖**，附「中線（前收市）」虛線。
+- **每 60 秒**自動從 etnet 更新一次數據。
+- 同一網頁亦公開於 GitHub Pages：https://lightonint.github.io/etnet-download/
+
 ### Tab 1: 下載數據 (Get Data)
 - 用 **tick box（勾選）** 選擇要下載的期貨產品（預設勾選：恒生指數期貨 HSI、恒生中國企業指數期貨 HHI；其他產品如小型恒指 MHI、恒生科技 HTI、美元兌人民幣 CUS 等亦可自由勾選）。
 - 按下 **Get Data** 即時下載並儲存 .xlsx 到桌面；**月份自動下載「即月 + 下一個月」**，不需其他月份。
