@@ -289,8 +289,6 @@ def parse_interval_table(soup: BeautifulSoup) -> List[IntervalRow]:
         if len(cells) < 10:
             continue
         time_v = cells[0]
-        if time_v in ("上日", "今日"):
-            continue  # summary rows only
         change_raw = cells[5]
         m = re.match(r"([^(\n]*)(?:\(([^)]*)\))?", change_raw)
         change = m.group(1).strip() if m else ""

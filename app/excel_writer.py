@@ -42,16 +42,24 @@ def _write_rows(ws, start_row: int, headers: List[str], rows: List[list]) -> int
     return r - 1
 
 
-def _autofit(ws, ncols: int, max_width: int = 32):
+def _display_width(value) -> int:
+    """Excel column width units: CJK chars render ~2 units, ASCII ~1."""
+    w = 0
+    for ch in str(value):
+        w += 2 if ord(ch) > 0x2E7F else 1
+    return w
+
+
+def _autofit(ws, ncols: int, max_width: int = 44):
     for c in range(1, ncols + 1):
+        col_letter = get_column_letter(c)
         width = 0
-        for cell in ws[c]:
+        for cell in ws[col_letter]:  # ws['C'] = column C (ws[3] would be row 3)
             if cell.value is None:
                 continue
-            w = len(str(cell.value))
-            width = max(width, w)
-        ws.column_dimensions[get_column_letter(c)].width = min(
-            max(width + 2, 10), max_width
+            width = max(width, _display_width(cell.value))
+        ws.column_dimensions[col_letter].width = min(
+            max(width + 3, 12), max_width
         )
 
 
@@ -269,15 +277,14 @@ def build_tabs_workbook(pages_by_code: dict, product_names: dict = None,
                 row = _write_rows(ws, row, ["合約", "到期日", "未平倉總數 (GOI)", "未平倉淨數 (NOI)"],
                                   [[oi.contract or name, oi.expiry, oi.goi, oi.noi]]) + 2
 
-            # --- interval table ---
-            if page.interval:
-                row = _section_title(ws, row, "15分鐘時段記錄")
-                row = _write_rows(ws, row, INTERVAL_HEADERS, [
-                    [r.time, r.open, r.high, r.low, r.last,
-                     r.change, r.change_pct, r.premium,
-                     r.volume, r.trades, r.avg_trade]
-                    for r in page.interval
-                ]) + 2
+            # --- interval table (labels always shown, data when available) ---
+            row = _section_title(ws, row, "15分鐘時段記錄")
+            row = _write_rows(ws, row, INTERVAL_HEADERS, [
+                [r.time, r.open, r.high, r.low, r.last,
+                 r.change, r.change_pct, r.premium,
+                 r.volume, r.trades, r.avg_trade]
+                for r in page.interval
+            ]) + 2
 
         _autofit(ws, max(len(QUOTE_HEADERS), len(INTERVAL_HEADERS)))
 

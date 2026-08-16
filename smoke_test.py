@@ -25,6 +25,11 @@ def main():
     assert page.open_interest is not None, "no open interest parsed"
     assert page.spot is not None, "no spot parsed"
     assert len(page.interval) > 0, "no interval table parsed"
+    # 上日 / 今日 summary rows must be present at the top
+    assert page.interval[0].time == "上日" and page.interval[1].time == "今日", (
+        "interval table missing 上日/今日 rows"
+    )
+    print("   interval top rows:", [(r.time, r.last, r.change) for r in page.interval[:2]])
 
     wb = excel_writer.build_workbook(page)
     p1 = out_dir / "single.xlsx"
