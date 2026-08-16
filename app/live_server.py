@@ -64,11 +64,17 @@ class DataCache(QObject):
                 prev_close = next(
                     (s.prev_close for s in page.sessions if s.prev_close), None
                 )
+                # session mid-point = (day session high + low) / 2
+                day = next((s for s in page.sessions if s.session == "日市"), None)
+                mid_point = None
+                if day and isinstance(day.high, (int, float)) and isinstance(day.low, (int, float)):
+                    mid_point = round((day.high + day.low) / 2, 2)
                 self._data[code] = {
                     "code": code,
                     "month": page.month,
                     "name": page.contract_name,
                     "prevClose": prev_close,
+                    "midPoint": mid_point,
                     "updated": page.update_time,
                     "candles": candles,
                 }

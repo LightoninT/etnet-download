@@ -12,12 +12,13 @@ const appSrc = readFileSync(new URL("./app.js", import.meta.url), "utf8");
 const dom = new JSDOM(html, { runScripts: "outside-only", url: "http://127.0.0.1:8787/" });
 
 const setDataCalls = [];
+const priceLineCalls = [];
 dom.window.LightweightCharts = {
   createChart: () => ({
     timeScale: () => ({ fitContent: () => {} }),
     addCandlestickSeries: () => ({
       setData: (d) => setDataCalls.push(d),
-      createPriceLine: () => ({}),
+      createPriceLine: (o) => { priceLineCalls.push(o.price); return {}; },
       removePriceLine: () => {},
     }),
   }),
@@ -34,6 +35,7 @@ dom.window.fetch = async (url) => {
       code,
       month: "202608",
       prevClose: 25373,
+      midPoint: 25168,
       updated: "14/08/2026 17:59",
       candles: [
         { time: 1786872600, open: 25191, high: 25237, low: 25160, close: 25186 },
@@ -57,6 +59,9 @@ let ok = true;
 try {
   if (setDataCalls.length !== 2) throw new Error(`expected 2 chart series updates, got ${setDataCalls.length}`);
   if (setDataCalls[0][0].time !== 1786872600) throw new Error("bad candle time");
+  // mid line must use the session mid-point (not prev close)
+  if (priceLineCalls.length !== 2 || priceLineCalls.some((p) => p !== 25168))
+    throw new Error(`mid line not at session mid-point: ${priceLineCalls}`);
   const status = dom.window.document.getElementById("status").textContent;
   const metaHSI = dom.window.document.getElementById("meta-HSI").textContent;
   console.log("status:", status);

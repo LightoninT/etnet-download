@@ -15,8 +15,14 @@ const PRODUCTS = [
   { code: "HHI", title: "恒生中國企業指數期貨 (HHI)" },
 ];
 
+// Cloudflare Worker proxy (free). Deploy webpage/worker_proxy.js to a worker,
+// then put its URL here (e.g. "https://etnet-proxy.yourname.workers.dev").
+// It is tried first; the public proxies below are fallbacks.
+const CLOUDFLARE_WORKER_URL = "";
+
 // public CORS proxies, tried in order when same-origin API is unavailable
 const PROXIES = [
+  (u) => `${CLOUDFLARE_WORKER_URL}?url=${encodeURIComponent(u)}`,
   (u) => `https://api.cors.lol/?url=${encodeURIComponent(u)}`,
   (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
   (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
@@ -52,10 +58,11 @@ async function fetchJsonOrHtml(code) {
     if (resp.ok) return { json: await resp.json() };
   } catch (e) { /* not served locally (e.g. GitHub Pages) -> try proxies */ }
 
-  // 2) public CORS proxies -> parse HTML
+  // 2) proxy chain (Cloudflare Worker first, then public CORS proxies) -> parse HTML
   const url = `https://www.etnet.com.hk/www/tc/futures/?subtype=${code}`;
   let lastErr = null;
   for (const proxy of PROXIES) {
+    if (!proxy(url)) continue; // skip unconfigured proxy (empty CLOUDFLARE_WORKER_URL)
     try {
       const resp = await fetch(proxy(url));
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -100,7 +107,7 @@ function setMidLine(s, price) {
       lineWidth: 1,
       lineStyle: LightweightCharts.LineStyle.Dashed,
       axisLabelVisible: true,
-      title: "中線(前收市)",
+      title: "中線(日中點)",
     });
   }
 }
@@ -109,7 +116,8 @@ function render(code, data) {
   const chart = charts[code];
   chart.s.setData(data.candles);
   chart.chart.timeScale().fitContent();
-  setMidLine(chart.s, data.prevClose);
+  // mid line = session mid-point, fallback to previous close
+  setMidLine(chart.s, data.midPoint != null ? data.midPoint : data.prevClose);
 
   const meta = document.getElementById(`meta-${code}`);
   const last = data.candles.length ? data.candles[data.candles.length - 1].close : null;

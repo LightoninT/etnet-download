@@ -5,9 +5,17 @@
 ## 功能
 
 ### Tab 0: 即時圖表 (Live Charts)
-- 顯示 **恒生指數期貨 (HSI)** 及 **恒生中國企業指數期貨 (HHI)**（即月）的 **15分鐘陰陽燭圖**，附「中線（前收市）」虛線。
+- 顯示 **恒生指數期貨 (HSI)** 及 **恒生中國企業指數期貨 (HHI)**（即月）的 **15分鐘陰陽燭圖**，附「中線（日市區間中點 = (最高+最低)/2）」虛線。
 - **每 60 秒**自動從 etnet 更新一次數據。
 - 同一網頁亦公開於 GitHub Pages：https://lightonint.github.io/etnet-download/
+
+#### Cloudflare Worker 代理（免費，可選但建議）
+GitHub Pages 是靜態網站，瀏覽器直接抓 etnet 會被 CORS 擋住。預設會自動嘗試公開代理（cors.lol → allorigins → codetabs），免費額度有限、較不穩定。建議部署你自己的免費 Cloudflare Worker 代理：
+1. Cloudflare 儀表板 → **Workers & Pages → Create → Worker**
+2. 把 `webpage/worker_proxy.js` 的內容貼上取代預設程式碼 → **Deploy**
+3. 複製你的 Worker 網址（`https://<名稱>.<帳號>.workers.dev`）
+4. 告訴我網址，我會把它寫入 `webpage/app.js` 的 `CLOUDFLARE_WORKER_URL`（或你自行改完後 push）
+- 免費方案每天 10 萬次請求，足夠每分鐘更新。
 
 ### Tab 1: 下載數據 (Get Data)
 - 用 **tick box（勾選）** 選擇要下載的期貨產品（預設勾選：恒生指數期貨 HSI、恒生中國企業指數期貨 HHI；其他產品如小型恒指 MHI、恒生科技 HTI、美元兌人民幣 CUS 等亦可自由勾選）。
