@@ -98,6 +98,21 @@ def main():
     win._toggle_schedule()
     assert not win._schedule_active and win.start_btn.text() == "開始排程"
 
+    # REGRESSION: a scheduled fire while a download is running must be queued,
+    # not lost (previously _last_fired was marked before the busy skip).
+    win._schedule_active = True
+    win._busy = True
+    scheduled = __import__("datetime").datetime(2026, 8, 16, 23, 0)
+    win._run_download(manual=False, scheduled=scheduled)
+    assert win._pending_scheduled == scheduled, "scheduled run not queued while busy"
+    # simulate worker finishing -> queued run dispatched
+    dispatched = []
+    win._run_download = lambda manual, scheduled=None: dispatched.append(scheduled)
+    win._pending_scheduled = scheduled
+    win._cleanup_worker(object())
+    assert dispatched == [scheduled], "queued scheduled run was not dispatched"
+    win._busy = False
+
     # next run label computed
     win._schedule_active = True
     win._update_next_run_label()

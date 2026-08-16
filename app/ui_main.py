@@ -51,6 +51,8 @@ class MainWindow(QMainWindow):
         self._busy = False
         self._schedule_active = False
         self._last_fired = None
+        self._pending_scheduled = None    # queued scheduled run while busy
+        self._start_date = ""             # interval-mode anchor date
         self._contract_loader = None
 
         self._build_ui()
@@ -269,6 +271,7 @@ class MainWindow(QMainWindow):
             cb.setChecked(i in cfg.weekdays)
         self.interval_spin.setValue(max(1, cfg.interval_days))
         self.hkt_check.setChecked(cfg.use_hkt)
+        self._start_date = cfg.start_date
         self.times_list.clear()
         for t in sorted(set(cfg.times)):
             self.times_list.addItem(t)
@@ -301,6 +304,7 @@ class MainWindow(QMainWindow):
         ]
         cfg.output_dir = ""
         cfg.use_hkt = self.hkt_check.isChecked()
+        cfg.start_date = self._start_date
         cfg.enabled = self._schedule_active
         return cfg
 
@@ -357,6 +361,7 @@ class MainWindow(QMainWindow):
     def _toggle_schedule(self):
         if self._schedule_active:
             self._schedule_active = False
+            self._last_fired = None
             self._log("排程已停止")
         else:
             cfg = self._collect_config()
@@ -364,8 +369,7 @@ class MainWindow(QMainWindow):
             if err:
                 QMessageBox.warning(self, "排程設定錯誤", err)
                 return
-            cfg.start_date = dt.date.today().isoformat()
-            app_config.save_config(cfg)
+            self._start_date = dt.date.today().isoformat()
             self._schedule_active = True
             self._log(f"排程已啟動: {cfg.summary()}")
         self._sync_start_stop_button()
@@ -413,8 +417,16 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
     def _run_download(self, manual: bool, scheduled: dt.datetime | None = None):
         if self._busy:
-            self._log("警告: 上一次下載仍在進行中，本次已略過")
+            if not manual and scheduled is not None:
+                # queue the scheduled run; dispatch when the current download ends
+                self._pending_scheduled = scheduled
+                self._log(
+                    "警告: 上一次下載仍在進行中，本次排程已排隊，完成後會立即執行"
+                )
+            else:
+                self._log("警告: 上一次下載仍在進行中，本次已略過")
             return
+        self._pending_scheduled = None
         products = self._collect_config().products
         if not products:
             self._log("錯誤: 請先勾選至少一個期貨產品")
@@ -434,14 +446,12 @@ class MainWindow(QMainWindow):
         worker.start()
 
     def _on_download_success(self, path: str):
-        self._busy = False
         self.dl_status.setText(f"✅ 已儲存: {path}")
         self.statusBar().showMessage("下載完成")
         self._log(f"完成: {path}")
         self.out_dir_label.setText(f"輸出位置: {Path(path).parent}")
 
     def _on_download_failed(self, msg: str):
-        self._busy = False
         self.dl_status.setText(f"❌ 下載失敗: {msg}")
         self.statusBar().showMessage("下載失敗")
         self._log(f"失敗: {msg}")
@@ -449,6 +459,13 @@ class MainWindow(QMainWindow):
     def _cleanup_worker(self, worker):
         if worker in self._workers:
             self._workers.remove(worker)
+        self._busy = False
+        # dispatch a scheduled run that was queued while a download was running
+        if self._pending_scheduled is not None:
+            nxt = self._pending_scheduled
+            self._pending_scheduled = None
+            self._log(f"執行排隊的排程: {nxt.strftime('%Y-%m-%d %H:%M')}")
+            self._run_download(manual=False, scheduled=nxt)
 
     def _open_output_dir(self):
         d = desktop_dir()
