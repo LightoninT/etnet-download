@@ -59,6 +59,21 @@ osslsigncode verify dist/ETNetFuturesExporter-signed.exe
    若你的防毒攔截單檔版，改用資料夾版（`dist/ETNetFuturesExporter/`）通常可通過。
 4. 首次執行時：**更多資訊 (More info) → 仍要執行 (Run anyway)**。
 
+## 非 .exe 的發佈方式（可避開或減少攔截）
+
+Windows 的 SmartScreen / 防毒只會檢查「下載回來的可執行程式」。因此：
+
+| 方式 | 是否被攔截 | 說明 |
+|---|---|---|
+| **ZIP 資料夾版**（已提供：`ETNetFuturesExporter-windows-onedir.zip`） | ZIP 本身**不會**觸發 SmartScreen（它是壓縮檔不是程式）；解壓後的 .exe 首次執行可能仍有一次提示 | 最實用的「非 exe」方案：下載 zip → 解壓 → 執行 |
+| **直接用 Python 執行**（無 exe） | **完全不會**被攔截 | 開發者/個人使用：安裝 Python 後 `python main.py` |
+| MSI 安裝檔 | 未簽章的 MSI 一樣觸發 SmartScreen | 沒有簽章時沒幫助，不值得做 |
+| macOS .dmg | macOS Gatekeeper 對未簽章 app 同樣會提示 | 已有 dmg；右鍵→開啟 即可 |
+
+**結論**：只要程式最終要「執行」，Windows 就必定檢查它 —— 沒有任何格式能
+完全繞過；最接近的是 ZIP（傳輸階段零攔截）+ 資料夾版（比單檔 exe 少誤報）。
+要徹底無提示，仍是取得 CA 簽章（見上方方法 A / B）。
+
 ## 現況（v1.1.5）
 
 - 已內嵌正確的**版本資訊**（產品名稱、版本、公司、描述）→ 減少誤判、屬性頁更完整。

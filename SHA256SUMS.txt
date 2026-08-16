@@ -1,0 +1,3 @@
+b96eb3e554f62eaa0fad19ad1ed09e40eb3d786eab6b60219b5a08285a143253  dist/ETNetFuturesExporter.exe
+8cac43b38b098bf9288c50acf9dcef2a0f46da7b6a82fbf126a05253c6be5606  dist/ETNetFuturesExporter-windows-onedir.zip
+262b9a63a9bf3d5e26469e4f743b0f9fdff5912af5134eca0daa94a4c889bd2d  ETNetFuturesExporter-mac-arm64.dmg
