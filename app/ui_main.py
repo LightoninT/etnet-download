@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 
 from . import config as app_config
 from .downloader import fetch_html, parse_contract_options
-from .scheduler import WEEKDAY_NAMES, ScheduleConfig, next_run
+from .scheduler import WEEKDAY_NAMES, ScheduleConfig, hkt_display, next_run
 from .worker import DownloadWorker, desktop_dir
 
 ALL_CONTRACTS = "__ALL__"
@@ -174,6 +174,11 @@ class MainWindow(QMainWindow):
         # times editor
         t_row = QHBoxLayout()
         t_row.addWidget(QLabel("執行時間 (每日可多個):"))
+        self.hkt_check = QCheckBox("以香港時間 (HKT) 計算")
+        self.hkt_check.setChecked(True)
+        self.hkt_check.toggled.connect(self._on_config_changed)
+        t_row.addStretch(1)
+        t_row.addWidget(self.hkt_check)
         g.addLayout(t_row)
 
         times_row = QHBoxLayout()
@@ -182,6 +187,16 @@ class MainWindow(QMainWindow):
         times_row.addWidget(self.times_list, 1)
 
         t_edit_col = QVBoxLayout()
+        # dropdown of common HK times (15-min steps, covers HK futures sessions)
+        self.hkt_combo = QComboBox()
+        for h in range(24):
+            for m in (0, 15, 30, 45):
+                self.hkt_combo.addItem(f"{h:02d}:{m:02d}")
+        self.hkt_combo.setCurrentText("16:30")
+        t_edit_col.addWidget(self.hkt_combo)
+        self.add_combo_time_btn = QPushButton("加入(下拉)")
+        self.add_combo_time_btn.clicked.connect(self._on_add_combo_time)
+        t_edit_col.addWidget(self.add_combo_time_btn)
         self.time_edit = QTimeEdit()
         self.time_edit.setDisplayFormat("HH:mm")
         self.time_edit.setTime(QTime(16, 30))
@@ -250,6 +265,7 @@ class MainWindow(QMainWindow):
         for i, cb in enumerate(self.weekday_checks):
             cb.setChecked(i in cfg.weekdays)
         self.interval_spin.setValue(max(1, cfg.interval_days))
+        self.hkt_check.setChecked(cfg.use_hkt)
         self.times_list.clear()
         for t in sorted(set(cfg.times)):
             self.times_list.addItem(t)
@@ -285,6 +301,7 @@ class MainWindow(QMainWindow):
         cfg.all_contracts = (data == ALL_CONTRACTS) or self.sched_contract_combo.currentIndex() < 0
         cfg.contract = "" if cfg.all_contracts else str(data or "")
         cfg.output_dir = ""
+        cfg.use_hkt = self.hkt_check.isChecked()
         cfg.enabled = self._schedule_active
         return cfg
 
@@ -319,6 +336,12 @@ class MainWindow(QMainWindow):
 
     def _on_add_time(self):
         t = self.time_edit.time().toString("HH:mm")
+        if t not in [self.times_list.item(k).text() for k in range(self.times_list.count())]:
+            self.times_list.addItem(t)
+            self._on_config_changed()
+
+    def _on_add_combo_time(self):
+        t = self.hkt_combo.currentText()
         if t not in [self.times_list.item(k).text() for k in range(self.times_list.count())]:
             self.times_list.addItem(t)
             self._on_config_changed()
@@ -376,9 +399,13 @@ class MainWindow(QMainWindow):
         if self._schedule_active:
             nxt = next_run(dt.datetime.now(), cfg)
             if nxt:
-                self.next_run_label.setText(
-                    f"下次執行: {nxt.strftime('%Y-%m-%d %H:%M:%S')}"
-                )
+                local_s = nxt.strftime("%Y-%m-%d %H:%M:%S")
+                if cfg.use_hkt:
+                    self.next_run_label.setText(
+                        f"下次執行: {local_s}（香港時間 {hkt_display(nxt)}）"
+                    )
+                else:
+                    self.next_run_label.setText(f"下次執行: {local_s}")
                 return
         self.next_run_label.setText("下次執行: -")
 

@@ -36,6 +36,7 @@ def load_config() -> ScheduleConfig:
         cfg.contract = str(data.get("contract", ""))
         cfg.all_contracts = bool(data.get("all_contracts", False))
         cfg.output_dir = str(data.get("output_dir", ""))
+        cfg.use_hkt = bool(data.get("use_hkt", True))
     except Exception:
         pass
     return cfg
@@ -53,6 +54,7 @@ def save_config(cfg: ScheduleConfig) -> None:
         "contract": cfg.contract,
         "all_contracts": cfg.all_contracts,
         "output_dir": cfg.output_dir,
+        "use_hkt": cfg.use_hkt,
     }
     config_file().write_text(
         json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"

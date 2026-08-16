@@ -6,8 +6,9 @@ Supported schedule modes
 * ``daily``    - run every day at one or more times
 * ``interval`` - run every N days at one or more times
 
-The number of runs per day equals the number of configured times; the number
-of runs per week is derived from the mode and shown in the UI summary.
+Times are wall-clock in **Hong Kong Time (HKT, UTC+8, no DST since 1979)** by
+default (``use_hkt=True``); the engine converts to/from the local timezone so
+the schedule fires at the correct HKT moment on any machine.
 """
 
 from __future__ import annotations
@@ -19,18 +20,45 @@ from typing import List, Optional
 WEEKDAY_NAMES = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
 WEEKDAY_SHORT = ["一", "二", "三", "四", "五", "六", "日"]
 
+# Hong Kong Time: fixed UTC+8 offset, no DST since 1979 -> no tzdata needed.
+HKT = dt.timezone(dt.timedelta(hours=8))
+
+
+def _local_tzinfo() -> dt.tzinfo:
+    return dt.datetime.now().astimezone().tzinfo
+
+
+def to_hkt_naive(local_naive: dt.datetime, local_tz: dt.tzinfo = None) -> dt.datetime:
+    """Convert a naive local datetime to naive HKT wall-clock time."""
+    if local_tz is None:
+        local_tz = _local_tzinfo()
+    return local_naive.replace(tzinfo=local_tz).astimezone(HKT).replace(tzinfo=None)
+
+
+def from_hkt_naive(hkt_naive: dt.datetime, local_tz: dt.tzinfo = None) -> dt.datetime:
+    """Convert a naive HKT datetime to naive local wall-clock time."""
+    if local_tz is None:
+        local_tz = _local_tzinfo()
+    return hkt_naive.replace(tzinfo=HKT).astimezone(local_tz).replace(tzinfo=None)
+
+
+def hkt_display(local_naive: dt.datetime, local_tz: dt.tzinfo = None) -> str:
+    """Format a naive local datetime as HKT for display."""
+    return to_hkt_naive(local_naive, local_tz).strftime("%Y-%m-%d %H:%M")
+
 
 @dataclass
 class ScheduleConfig:
     enabled: bool = False
     mode: str = "weekly"                       # weekly | daily | interval
     weekdays: List[int] = field(default_factory=lambda: list(range(5)))  # 0=Mon..6=Sun
-    times: List[str] = field(default_factory=lambda: ["16:30"])          # "HH:MM"
+    times: List[str] = field(default_factory=lambda: ["16:30"])          # "HH:MM" (HKT)
     interval_days: int = 1                     # every N days (interval mode)
     start_date: str = ""                       # ISO yyyy-mm-dd anchor for interval mode
     contract: str = ""                         # "" = front month / default page
     all_contracts: bool = False                # fetch all front-month contracts
     output_dir: str = ""                       # "" = Desktop
+    use_hkt: bool = True                       # times are in Hong Kong Time
 
     # ------------------------------------------------------------------
     def validate(self) -> str:
@@ -66,21 +94,22 @@ class ScheduleConfig:
         return self.times_per_day() * self.days_per_week()
 
     def summary(self) -> str:
+        tz_note = "（香港時間 HKT）" if self.use_hkt else "（本機時間）"
         if self.mode == "weekly":
             days = "、".join(WEEKDAY_NAMES[d] for d in sorted(self.weekdays))
             return (
                 f"每週在 {days} 執行 {self.times_per_day()} 次/日 "
                 f"（共 {self.times_per_week()} 次/週）於 "
-                f"{', '.join(self.times)}"
+                f"{', '.join(self.times)} {tz_note}"
             )
         if self.mode == "daily":
             return (
                 f"每日執行 {self.times_per_day()} 次（每週 {self.times_per_week()} 次）"
-                f"於 {', '.join(self.times)}"
+                f"於 {', '.join(self.times)} {tz_note}"
             )
         return (
             f"每隔 {self.interval_days} 日執行 {self.times_per_day()} 次/日"
-            f"（約每週 {self.times_per_week()} 次）於 {', '.join(self.times)}"
+            f"（約每週 {self.times_per_week()} 次）於 {', '.join(self.times)} {tz_note}"
         )
 
 
@@ -109,8 +138,9 @@ def _next_time_on_date(date: dt.date, times: List[str], after: Optional[dt.datet
 # ---------------------------------------------------------------------------
 
 
-def next_run(now: dt.datetime, cfg: ScheduleConfig) -> Optional[dt.datetime]:
-    """Earliest scheduled run strictly after ``now``, or None if none."""
+def _next_run_naive(now: dt.datetime, cfg: ScheduleConfig) -> Optional[dt.datetime]:
+    """Earliest scheduled run strictly after ``now`` (both in the same
+    wall-clock timezone, naive)."""
     err = cfg.validate()
     if err:
         return None
@@ -159,3 +189,21 @@ def next_run(now: dt.datetime, cfg: ScheduleConfig) -> Optional[dt.datetime]:
         return _next_time_on_date(run_date, times, None)
 
     return None
+
+
+def next_run(now: dt.datetime, cfg: ScheduleConfig,
+             local_tz: dt.tzinfo = None) -> Optional[dt.datetime]:
+    """Earliest scheduled run strictly after ``now`` (naive local time).
+
+    When ``cfg.use_hkt`` is set, the configured ``times`` are interpreted as
+    HKT wall-clock and the result is converted back to local time.
+    """
+    if not cfg.use_hkt:
+        return _next_run_naive(now, cfg)
+    if local_tz is None:
+        local_tz = _local_tzinfo()
+    now_hkt = to_hkt_naive(now, local_tz)
+    cand = _next_run_naive(now_hkt, cfg)
+    if cand is None:
+        return None
+    return from_hkt_naive(cand, local_tz)

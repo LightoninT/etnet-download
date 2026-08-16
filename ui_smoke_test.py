@@ -55,6 +55,23 @@ def main():
     print("times after add:", times)
     assert "08:00" in times
 
+    # HKT dropdown: pick a time from the combo and add it
+    win.hkt_combo.setCurrentText("09:15")
+    win._on_add_combo_time()
+    times = [win.times_list.item(k).text() for k in range(win.times_list.count())]
+    print("times after combo add:", times)
+    assert "09:15" in times
+
+    # HKT checkbox wiring
+    assert win.hkt_check.isChecked()
+    cfg = win._collect_config()
+    assert cfg.use_hkt is True
+    assert "HKT" in cfg.summary()
+    win.hkt_check.setChecked(False)
+    cfg = win._collect_config()
+    assert cfg.use_hkt is False
+    win.hkt_check.setChecked(True)
+
     # toggle schedule on/off
     win._toggle_schedule()
     assert win._schedule_active and win.start_btn.text() == "停止排程"
