@@ -16,13 +16,14 @@ const PRODUCTS = [
 ];
 
 // Cloudflare Worker proxy (free). Deploy webpage/worker_proxy.js to a worker,
-// then put its URL here (e.g. "https://etnet-proxy.yourname.workers.dev").
-// It is tried first; the public proxies below are fallbacks.
-const CLOUDFLARE_WORKER_URL = "";
+// then put its URL here. It is tried first; the public proxies below are fallbacks.
+const CLOUDFLARE_WORKER_URL = "https://etnet-proxy.etnetdata.workers.dev";
 
 // public CORS proxies, tried in order when same-origin API is unavailable
 const PROXIES = [
-  (u) => `${CLOUDFLARE_WORKER_URL}?url=${encodeURIComponent(u)}`,
+  (u) => CLOUDFLARE_WORKER_URL
+    ? `${CLOUDFLARE_WORKER_URL}?url=${encodeURIComponent(u)}`
+    : null, // not configured -> skipped
   (u) => `https://api.cors.lol/?url=${encodeURIComponent(u)}`,
   (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
   (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
@@ -52,13 +53,7 @@ const { parsePage } = ETNetParser;
 // Fetching
 // ---------------------------------------------------------------------------
 async function fetchJsonOrHtml(code) {
-  // 1) same-origin JSON API (exe's local server) - no CORS needed
-  try {
-    const resp = await fetch(`/api/${code.toLowerCase()}`, { cache: "no-store" });
-    if (resp.ok) return { json: await resp.json() };
-  } catch (e) { /* not served locally (e.g. GitHub Pages) -> try proxies */ }
-
-  // 2) proxy chain (Cloudflare Worker first, then public CORS proxies) -> parse HTML
+  // proxy chain (Cloudflare Worker first, then public CORS proxies) -> parse HTML
   const url = `https://www.etnet.com.hk/www/tc/futures/?subtype=${code}`;
   let lastErr = null;
   for (const proxy of PROXIES) {
@@ -142,12 +137,7 @@ async function refresh() {
   for (const p of PRODUCTS) {
     try {
       const res = await fetchJsonOrHtml(p.code);
-      const data = res.json || res.page;
-      if (res.json) {
-        // JSON from the exe local server: ensure candle times are numbers
-        data.candles.forEach((c) => { c.time = Number(c.time); });
-      }
-      render(p.code, data);
+      render(p.code, res.page);
       ok++;
     } catch (e) {
       document.getElementById(`meta-${p.code}`).textContent = `❌ ${e.message}`;
