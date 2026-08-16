@@ -30,14 +30,17 @@ const FIXTURE = `<!doctype html><html><body>
 </body></html>`;
 
 const setDataCalls = [];
-const priceLineCalls = [];
+const midLineCalls = [];
 dom.window.LightweightCharts = {
   createChart: () => ({
     timeScale: () => ({ fitContent: () => {} }),
     addCandlestickSeries: () => ({
       setData: (d) => setDataCalls.push(d),
-      createPriceLine: (o) => { priceLineCalls.push(o.price); return {}; },
+      createPriceLine: () => ({}),
       removePriceLine: () => {},
+    }),
+    addLineSeries: () => ({
+      setData: (d) => midLineCalls.push(d),
     }),
   }),
   LineStyle: { Dashed: 0 },
@@ -69,9 +72,11 @@ try {
   if (!Number.isInteger(c0.time) || c0.time < 1e9) throw new Error(`bad candle time: ${c0.time}`);
   if (c0.open !== 25191 || c0.high !== 25237 || c0.low !== 25160 || c0.close !== 25186)
     throw new Error(`bad first candle: ${JSON.stringify(c0)}`);
-  // mid line must use the session mid-point (not prev close)
-  if (priceLineCalls.length !== 2 || priceLineCalls.some((p) => p !== 25168))
-    throw new Error(`mid line not at session mid-point: ${priceLineCalls}`);
+  // mid line = middle value of each candle (high+low)/2
+  if (midLineCalls.length !== 2) throw new Error(`expected 2 mid-line updates, got ${midLineCalls.length}`);
+  const m0 = midLineCalls[0][0];
+  if (m0.time !== c0.time || m0.value !== (25237 + 25160) / 2)
+    throw new Error(`bad candle mid: ${JSON.stringify(m0)}`);
   const status = dom.window.document.getElementById("status").textContent;
   const metaHSI = dom.window.document.getElementById("meta-HSI").textContent;
   console.log("status:", status);
