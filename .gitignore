@@ -26,3 +26,4 @@ Thumbs.db
 dmg_stage/
 webpage/node_modules/
 .wrangler/
+build_onedir/
