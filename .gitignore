@@ -25,3 +25,4 @@ Thumbs.db
 .vscode/
 dmg_stage/
 webpage/node_modules/
+.wrangler/
