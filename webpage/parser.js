@@ -75,14 +75,16 @@
     if (!month) throw new Error(`無法讀取 ${code} 合約月份`);
 
     let prevClose = null;
+    // live chart uses DAY session (日市) data only
     for (const card of doc.querySelectorAll(".futures-home-session-card")) {
-      const stats = {};
+      const label = cleanText(card.querySelector(".label")?.textContent);
+      if (!label.includes("日市")) continue;
       for (const li of card.querySelectorAll("li.futures-home-quote-stat")) {
         const lab = cleanText(li.querySelector(".futures-home-quote-label")?.textContent);
         const val = toNum(li.querySelector(".futures-home-quote-value")?.textContent);
-        if (lab) stats[lab] = val;
+        if (lab === "前收市:") prevClose = val;
       }
-      if (stats["前收市:"] != null && prevClose == null) prevClose = stats["前收市:"];
+      break; // only the 日市 card
     }
 
     const candles = [];

@@ -30,27 +30,26 @@ const FIXTURE = `<!doctype html><html><body>
 </body></html>`;
 
 const candleDataCalls = [];
-const markersCalls = [];
 const midLineCalls = [];
-let customSeriesPlugin = null;
-let areaSeriesCreated = false;
-let standardCandlesCreated = false;
+let seriesOptions = null;
+let candleOptions = null;
+let seriesCount = 0;
 dom.window.LightweightCharts = {
   createChart: () => ({
     timeScale: () => ({ fitContent: () => {} }),
-    addCustomSeries: (plugin, opts) => {
-      customSeriesPlugin = plugin;
-      return {
-        setData: (d) => candleDataCalls.push(d),
-        setMarkers: (m) => markersCalls.push(m),
-      };
+    addSeries: (type, opts) => {
+      seriesCount++;
+      seriesOptions = opts;
+      const isMid = seriesCount % 2 === 0; // 1st = candles, 2nd = mid line
+      if (!isMid) candleOptions = opts;
+      return { setData: (d) => (isMid ? midLineCalls : candleDataCalls).push(d) };
     },
-    addCandlestickSeries: () => { standardCandlesCreated = true; return { setData() {} }; },
-    addAreaSeries: () => { areaSeriesCreated = true; return { setData() {} }; },
-    addLineSeries: () => ({
-      setData: (d) => midLineCalls.push(d),
-    }),
+    addCustomSeries: () => { throw new Error("custom series should not be used (v5 native)"); },
+    addCandlestickSeries: () => { throw new Error("old v4 API should not be used"); },
+    addLineSeries: () => { throw new Error("old v4 API should not be used"); },
   }),
+  CandlestickSeries: { name: "CandlestickSeries" },
+  LineSeries: { name: "LineSeries" },
   LineStyle: { Dashed: 0, Solid: 0 },
   CrosshairMode: { Normal: 0 },
 };
@@ -75,19 +74,16 @@ await new Promise((r) => setTimeout(r, 100));
 
 let ok = true;
 try {
-  if (standardCandlesCreated || areaSeriesCreated)
-    throw new Error("standard candle/area series should NOT be created (custom thick-wick used)");
-  if (!customSeriesPlugin || typeof customSeriesPlugin.renderer.draw !== "function")
-    throw new Error("custom thick-wick candle series not registered");
-  if (candleDataCalls.length !== 2) throw new Error(`expected 2 candle updates, got ${candleDataCalls.length}`);
+  if (candleDataCalls.length !== 2 || midLineCalls.length !== 2)
+    throw new Error(`expected 2 candle + 2 mid updates, got ${candleDataCalls.length}/${midLineCalls.length}`);
   const c0 = candleDataCalls[0][0];
   if (!Number.isInteger(c0.time) || c0.time < 1e9) throw new Error(`bad time: ${c0.time}`);
   if (c0.open !== 25191 || c0.high !== 25237 || c0.low !== 25160 || c0.close !== 25186)
     throw new Error(`bad first candle: ${JSON.stringify(c0)}`);
-  // big dots removed: no markers set
-  if (markersCalls.length !== 0) throw new Error(`markers should be removed, got ${markersCalls.length}`);
+  // v5 native candles with thick wicks
+  if (!candleOptions || candleOptions.wickWidth !== 3)
+    throw new Error(`wickWidth not set: ${JSON.stringify(candleOptions)}`);
   // mid line = running range midpoint (25237+25160)/2
-  if (midLineCalls.length !== 2) throw new Error(`expected 2 mid-line updates, got ${midLineCalls.length}`);
   if (midLineCalls[0][0].value !== (25237 + 25160) / 2)
     throw new Error(`bad mid line: ${JSON.stringify(midLineCalls[0][0])}`);
   const status = dom.window.document.getElementById("status").textContent;
