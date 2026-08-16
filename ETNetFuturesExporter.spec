@@ -1,53 +1,52 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec - builds a single-file windowed exe for Windows.
-# Usage:  pyinstaller --clean --noconfirm futures_exporter.spec
+
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[
-        'bs4',
-        'lxml',
-        'openpyxl',
-        'openpyxl.cell._writer',
-        'requests',
-    ],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[
-        'tkinter',
-        'PySide6.QtQml',
-        'PySide6.QtQuick',
-        'PySide6.QtMultimedia',
-        'PySide6.Qt3DCore',
-        'PySide6.QtCharts',
-        'PySide6.QtDataVisualization',
-    ],
+    excludes=[],
     noarchive=False,
+    optimize=0,
 )
-
 pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='ETNetFuturesExporter',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=False,
+    upx=True,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='app.ico',
     version='version_info.txt',
+    icon=['app.ico'],
+)
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='ETNetFuturesExporter',
+)
+app = BUNDLE(
+    coll,
+    name='ETNetFuturesExporter.app',
+    icon='app.ico',
+    bundle_identifier=None,
 )

@@ -58,4 +58,12 @@ app = BUNDLE(
     name='ETNetFuturesExporter.app',
     icon='app.icns',
     bundle_identifier='com.lightonin.etnetfuturesexporter',
+    info_plist={
+        'CFBundleName': 'ETNet Futures Exporter',
+        'CFBundleDisplayName': 'ETNet Futures Exporter',
+        'CFBundleShortVersionString': '1.1.5',
+        'CFBundleVersion': '1.1.5',
+        'NSHumanReadableCopyright': 'Copyright (c) 2026 LightoninT',
+        'LSMinimumSystemVersion': '11.0',
+    },
 )

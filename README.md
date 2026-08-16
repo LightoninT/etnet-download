@@ -118,3 +118,10 @@ futures_exporter/
 
 ## 免責聲明
 數據來自 etnet.com.hk，僅供參考，不構成任何投資建議。
+
+## Windows 防毒 / SmartScreen 提示
+- 首次執行會見到「Windows 保護了您的電腦」→ 按 **更多資訊 → 仍要執行**。
+- 這是因為 exe **尚未有 CA 數碼簽章**（任何從網路下載的無簽章程式都會如此）。
+- 已內嵌完整版本資訊（屬性頁可見「ETNet Futures Exporter / LightoninT / 1.1.5」）。
+- 要徹底消除警告：見 **`docs/SIGNING.md`**（免費 Azure Trusted Signing 或
+  商用 OV 憑證，然後執行 `./sign_windows.sh` 簽署）。
