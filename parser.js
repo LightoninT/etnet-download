@@ -28,8 +28,32 @@
     return Number.isFinite(n) ? n : null;
   }
 
-  function parsePage(html, code) {
-    const doc = new global.DOMParser().parseFromString(html, "text/html");
+  /* Mid line = running range midpoint. The (high, low) range only expands:
+   *   1. candle inside current range        -> keep previous midpoint
+   *   2. candle high > range high           -> (new high + previous low) / 2
+   *   3. candle low  < range low            -> (previous high + new low) / 2
+   *   4. candle breaks both                 -> (new high + new low) / 2
+   * Returns [{time, value}] aligned to the candles.
+   */
+  function candleMidLine(candles) {
+    const out = [];
+    let rangeHigh = null;
+    let rangeLow = null;
+    for (const c of candles) {
+      if (rangeHigh === null) {
+        rangeHigh = c.high; // first candle seeds the range
+        rangeLow = c.low;
+      } else {
+        if (c.high > rangeHigh) rangeHigh = c.high; // rules 2 & 4
+        if (c.low < rangeLow) rangeLow = c.low;     // rules 3 & 4
+        // rule 1: candle inside range -> range unchanged
+      }
+      out.push({ time: c.time, value: (rangeHigh + rangeLow) / 2 });
+    }
+    return out;
+  }
+
+  function parsePage(html, code) {    const doc = new global.DOMParser().parseFromString(html, "text/html");
 
     let month = "";
     const sel = doc.querySelector("select#subtypelist");
@@ -81,5 +105,5 @@
     return { code, month, prevClose, candles, updated };
   }
 
-  global.ETNetParser = { parsePage, toUnixSeconds, hktToday, cleanText, toNum };
+  global.ETNetParser = { parsePage, candleMidLine, toUnixSeconds, hktToday, cleanText, toNum };
 })(typeof window !== "undefined" ? window : globalThis);

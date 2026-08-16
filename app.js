@@ -104,9 +104,7 @@ function makeChart(el) {
 function render(code, data) {
   const chart = charts[code];
   chart.s.setData(data.candles);
-  chart.mid.setData(
-    data.candles.map((c) => ({ time: c.time, value: (c.high + c.low) / 2 }))
-  );
+  chart.mid.setData(ETNetParser.candleMidLine(data.candles));
   chart.chart.timeScale().fitContent();
 
   const meta = document.getElementById(`meta-${code}`);
